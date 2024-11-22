@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Course</title>
+</head>
+<body>
+    <h1>Add a New Course</h1>
+    <form action="/add-course" method="POST">
+        <label for="cid">Course ID:</label>
+        <input type="text" id="cid" name="cid" required><br><br>
+
+        <label for="curversion">Current Version:</label>
+        <input type="text" id="curversion" name="curversion" required><br><br>
+
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" required><br><br>
+
+        <label for="credit">Credit:</label>
+        <input type="number" id="credit" name="credit" required><br><br>
+
+        <label for="instructor">Instructor:</label>
+        <input type="text" id="instructor" name="instructor" required><br><br>
+
+        <label for="classperiod">Class Period:</label>
+        <input type="text" id="classperiod" name="classperiod"><br><br>
+
+        <label for="semester_id">Semester (optional):</label>
+        <input type="text" id="semester_id" name="semester_id"><br><br>
+
+        <button type="submit">Add Course</button>
+    </form>
+</body>
+</html>

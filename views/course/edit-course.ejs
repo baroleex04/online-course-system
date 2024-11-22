@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Course</title>
+</head>
+<body>
+    <h1>Edit Course: <%= course.name %></h1>
+    <!-- Example delete form -->
+<form action="/delete-course" method="POST">
+    <input type="hidden" name="cid" value="<%= course.cid %>">
+    <button type="submit">Delete</button>
+</form>
+    <form action="/edit-course/<%= course.cid %>" method="POST">
+        <label for="curversion">Current Version:</label>
+        <input type="text" id="curversion" name="curversion" value="<%= course.curversion %>" required><br><br>
+
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" value="<%= course.name %>" required><br><br>
+
+        <label for="credit">Credit:</label>
+        <input type="number" id="credit" name="credit" value="<%= course.credit %>" required><br><br>
+
+        <label for="instructor">Instructor:</label>
+        <input type="text" id="instructor" name="instructor" value="<%= course.instructor %>" required><br><br>
+
+        <label for="classperiod">Class Period:</label>
+        <input type="text" id="classperiod" name="classperiod" value="<%= course.classperiod %>"><br><br>
+
+        <button type="submit">Update Course</button>
+    </form>
+</body>
+</html>

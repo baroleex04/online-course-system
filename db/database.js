@@ -1,21 +1,13 @@
 const dotenv = require('dotenv');
 dotenv.config();
 
-var mysql      = require('mysql');
+var mysql      = require('mysql2');
 var connection = mysql.createConnection({
-  host     : process.env["DB_HOST"],
+  host     : '127.0.0.1',
+  port     : 3306,
   database: process.env["DB_DATABASE"],
   user     : process.env["DB_ADMIN"],
   password : process.env["DB_PASSWORD"]
 });
  
 module.exports = connection;
-
-// connection.connect(function(err) {
-//   if (err) {
-//     console.error('error connecting: ' + err.stack);
-//     return;
-//   }
- 
-//   console.log('connected as id ' + connection.threadId);
-// });
