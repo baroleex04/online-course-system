@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Courses for Semester <%= semester_id %></title>
+</head>
+<body>
+    <h1>Courses for Semester: <%= semester_id %></h1>
+
+    <% if (courses.length > 0) { %>
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>Course ID</th>
+                    <th>Course Name</th>
+                    <th>Credit</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% courses.forEach(course => { %>
+                    <tr>
+                        <td><%= course.cid %></td>
+                        <td><%= course.name %></td>
+                        <td><%= course.credit %></td>
+                        <td><a href="/course-details/<%= course.cid %>">View Details</a></td>
+                    </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    <% } else { %>
+        <p>No courses found for this semester.</p>
+    <% } %>
+
+    <form action="/search-courses" method="get">
+        <input type="text" name="query" placeholder="Search by ID or Name">
+        <button type="submit">Search</button>
+    </form>
+
+    <a href="/add-course">Add a New Course</a>
+</body>
+</html>

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Results for "<%= query %>"</title>
+</head>
+<body>
+    <h1>Search Results for "<%= query %>"</h1>
+
+    <% if (courses.length > 0) { %>
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>Course ID</th>
+                    <th>Course Name</th>
+                    <th>Credit</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% courses.forEach(course => { %>
+                    <tr>
+                        <td><%= course.cid %></td>
+                        <td><%= course.name %></td>
+                        <td><%= course.credit %></td>
+                        <td><a href="/course-details/<%= course.cid %>">View Details</a></td>
+                    </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    <% } else { %>
+        <p>No results found.</p>
+    <% } %>
+
+    <a href="javascript:history.back()">Go Back</a>
+</body>
+</html>

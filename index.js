@@ -117,6 +117,71 @@ app.post("/edit-course/:cid", (req, res) => {
     );
 });
 
+// Route to Display Courses by Semester
+app.get("/courses/:semester_id", (req, res) => {
+    const { semester_id } = req.params;
+
+    let query = `
+        SELECT c.cid, c.name, c.credit
+        FROM Course c
+        JOIN Semester s ON c.cid = s.course_cid
+        WHERE s.semester_id = ?
+    `;
+
+    connection.query(query, [semester_id], (err, results) => {
+        if (err) {
+            console.error("Error fetching courses for semester:", err);
+            res.status(500).send("Error fetching courses. Please try again later.");
+            return;
+        }
+
+        res.render("course/list-courses", { courses: results, semester_id });
+    });
+});
+
+// Route to Display Full Details of a Course
+app.get("/course-details/:cid", (req, res) => {
+    const { cid } = req.params;
+
+    let query = `SELECT * FROM Course WHERE cid = ?`;
+    connection.query(query, [cid], (err, results) => {
+        if (err) {
+            console.error("Error fetching course details:", err);
+            res.status(500).send("Error fetching course details. Please try again later.");
+            return;
+        }
+
+        if (results.length === 0) {
+            res.status(404).send("Course not found.");
+            return;
+        }
+
+        res.render("course/course-details", { course: results[0] });
+    });
+});
+
+// Route to Search for Courses
+app.get("/search-courses", (req, res) => {
+    const { query } = req.query;
+
+    let searchQuery = `
+        SELECT cid, name, credit
+        FROM Course
+        WHERE cid LIKE ? OR name LIKE ?
+    `;
+
+    connection.query(searchQuery, [`%${query}%`, `%${query}%`], (err, results) => {
+        if (err) {
+            console.error("Error searching for courses:", err);
+            res.status(500).send("Error searching for courses. Please try again later.");
+            return;
+        }
+
+        res.render("course/search-results", { courses: results, query });
+    });
+});
+
+
 // 404 Page
 app.get("/*", (req, res) => {
     res.render("404");

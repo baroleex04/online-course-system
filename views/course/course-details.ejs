@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Details: <%= course.name %></title>
+</head>
+<body>
+    <h1>Course Details</h1>
+
+    <p><strong>Course ID:</strong> <%= course.cid %></p>
+    <p><strong>Current Version:</strong> <%= course.curversion %></p>
+    <p><strong>Name:</strong> <%= course.name %></p>
+    <p><strong>Credit:</strong> <%= course.credit %></p>
+    <p><strong>Instructor:</strong> <%= course.instructor %></p>
+    <p><strong>Class Period:</strong> <%= course.classperiod %></p>
+
+    <a href="javascript:history.back()">Go Back</a>
+</body>
+</html>
