@@ -1,4 +1,5 @@
-CREATE TABLE Users (
+-- Recreate the Users table
+CREATE TABLE IF NOT EXISTS Users (
     user_id VARCHAR(10) PRIMARY KEY,
     username VARCHAR(30) NOT NULL,
     password VARCHAR(30) NOT NULL,
@@ -11,34 +12,30 @@ CREATE TABLE Users (
     user_type VARCHAR(30) NOT NULL
 );
 
-CREATE TABLE Student (
+-- Recreate the Student table
+CREATE TABLE IF NOT EXISTS Student (
     user_id VARCHAR(10) PRIMARY KEY,
-    username VARCHAR(30) NOT NULL,
-    password VARCHAR(30) NOT NULL,
-    email VARCHAR(30) NOT NULL,
-    pnumber BIGINT NOT NULL,
-    nationality VARCHAR(20) NOT NULL,
-    fname VARCHAR(30) NOT NULL,
-    mname VARCHAR(30),
-    lname VARCHAR(30) NOT NULL,
-    Enroll_year INT NOT NULL,
-    Study_status VARCHAR(30) NOT NULL,
+    enroll_year INT NOT NULL,
+    study_status VARCHAR(30) NOT NULL,
     FOREIGN KEY (user_id) REFERENCES Users (user_id)
 );
 
-CREATE TABLE Activity_record (
+-- Recreate the Activity_record table
+CREATE TABLE IF NOT EXISTS Activity_record (
     user_id VARCHAR(10),
     record VARCHAR(30) PRIMARY KEY,
     FOREIGN KEY (user_id) REFERENCES Users (user_id)
 );
 
-CREATE TABLE History_courses (
+-- Recreate the History_courses table
+CREATE TABLE IF NOT EXISTS History_courses (
     user_id VARCHAR(10),
     record VARCHAR(30) PRIMARY KEY,
     FOREIGN KEY (user_id) REFERENCES Student (user_id)
 );
 
-CREATE TABLE Course (
+-- Recreate the Course table
+CREATE TABLE IF NOT EXISTS Course (
     cid VARCHAR(10) PRIMARY KEY,
     curversion VARCHAR(20) NOT NULL,
     name VARCHAR(50) NOT NULL,
@@ -47,7 +44,8 @@ CREATE TABLE Course (
     classperiod VARCHAR(20)
 );
 
-CREATE TABLE Registration (
+-- Recreate the Registration table
+CREATE TABLE IF NOT EXISTS Registration (
     user_id VARCHAR(10),
     course_cid VARCHAR(10),
     PRIMARY KEY (user_id, course_cid),
@@ -55,48 +53,28 @@ CREATE TABLE Registration (
     FOREIGN KEY (course_cid) REFERENCES Course (cid)
 );
 
-CREATE TABLE Staff (
+-- Recreate the Staff table
+CREATE TABLE IF NOT EXISTS Staff (
     user_id VARCHAR(10) PRIMARY KEY,
-    username VARCHAR(30) NOT NULL,
-    password VARCHAR(30) NOT NULL,
-    email VARCHAR(30) NOT NULL,
-    pnumber BIGINT NOT NULL,
-    nationality VARCHAR(20) NOT NULL,
-    fname VARCHAR(30) NOT NULL,
-    mname VARCHAR(30),
-    lname VARCHAR(30) NOT NULL,
-    `Position` VARCHAR(30) NOT NULL,
+    position VARCHAR(30) NOT NULL,
     FOREIGN KEY (user_id) REFERENCES Users (user_id)
 );
 
-CREATE TABLE Faculty (
+-- Recreate the Faculty table
+CREATE TABLE IF NOT EXISTS Faculty (
     user_id VARCHAR(10) PRIMARY KEY,
-    username VARCHAR(30) NOT NULL,
-    password VARCHAR(30) NOT NULL,
-    email VARCHAR(30) NOT NULL,
-    pnumber BIGINT NOT NULL,
-    nationality VARCHAR(20) NOT NULL,
-    fname VARCHAR(30) NOT NULL,
-    mname VARCHAR(30),
-    lname VARCHAR(30) NOT NULL,
-    Department VARCHAR(30) NOT NULL,
+    department VARCHAR(30) NOT NULL,
     FOREIGN KEY (user_id) REFERENCES Users (user_id)
 );
 
-CREATE TABLE Admin (
+-- Recreate the Admin table
+CREATE TABLE IF NOT EXISTS Admin (
     user_id VARCHAR(10) PRIMARY KEY,
-    username VARCHAR(30) NOT NULL,
-    password VARCHAR(30) NOT NULL,
-    email VARCHAR(30) NOT NULL,
-    pnumber BIGINT NOT NULL,
-    nationality VARCHAR(20) NOT NULL,
-    fname VARCHAR(30) NOT NULL,
-    mname VARCHAR(30),
-    lname VARCHAR(30) NOT NULL,
     FOREIGN KEY (user_id) REFERENCES Users (user_id)
 );
 
-CREATE TABLE Management (
+-- Recreate the Management table
+CREATE TABLE IF NOT EXISTS Management (
     manager_id VARCHAR(10),
     cid VARCHAR(10),
     role VARCHAR(30),
@@ -105,7 +83,8 @@ CREATE TABLE Management (
     FOREIGN KEY (cid) REFERENCES Course (cid)
 );
 
-CREATE TABLE Semester (
+-- Ensure Semester table is updated with ON DELETE CASCADE
+CREATE TABLE IF NOT EXISTS Semester (
     semester_id VARCHAR(10),
     course_cid VARCHAR(10),
     class_period INT,
@@ -113,7 +92,8 @@ CREATE TABLE Semester (
     FOREIGN KEY (course_cid) REFERENCES Course (cid) ON DELETE CASCADE
 );
 
-CREATE TABLE Weeklist (
+-- Recreate the Weeklist table
+CREATE TABLE IF NOT EXISTS Weeklist (
     semester_id VARCHAR(10),
     course_cid VARCHAR(10),
     week INT NOT NULL,
@@ -121,7 +101,8 @@ CREATE TABLE Weeklist (
     FOREIGN KEY (course_cid) REFERENCES Course (cid)
 );
 
-CREATE TABLE Feed_Back (
+-- Recreate the Feed_Back table
+CREATE TABLE IF NOT EXISTS Feed_Back (
     user_id VARCHAR(10),
     course_cid VARCHAR(10),
     Feed_Back_Des VARCHAR(50),

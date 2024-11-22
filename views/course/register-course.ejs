@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register Course</title>
+</head>
+<body>
+    <h1>Register for a Course</h1>
+    <% if (courses.length > 0) { %>
+        <form action="/register-course" method="POST">
+            <label for="cid">Select Course:</label>
+            <select id="cid" name="cid" required>
+                <% courses.forEach(course => { %>
+                    <option value="<%= course.cid %>"><%= course.name %> (<%= course.credit %> credits)</option>
+                <% }) %>
+            </select><br><br>
+            <button type="submit">Register</button>
+        </form>
+    <% } else { %>
+        <p>No courses available for registration.</p>
+    <% } %>
+</body>
+</html>

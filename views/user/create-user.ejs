@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create User</title>
+    <script>
+        function handleUserTypeChange() {
+            const userType = document.getElementById('user_type').value;
+            document.getElementById('student-fields').style.display = userType === 'Student' ? 'block' : 'none';
+            document.getElementById('staff-fields').style.display = userType === 'Staff' ? 'block' : 'none';
+            document.getElementById('faculty-fields').style.display = userType === 'Faculty' ? 'block' : 'none';
+        }
+    </script>
+</head>
+<body>
+    <h1>Create User</h1>
+    <form action="/create-user" method="POST">
+        <label for="user_id">User ID:</label>
+        <input type="text" id="user_id" name="user_id" required><br><br>
+
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" required><br><br>
+
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required><br><br>
+
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required><br><br>
+
+        <label for="pnumber">Phone Number:</label>
+        <input type="number" id="pnumber" name="pnumber" required><br><br>
+
+        <label for="nationality">Nationality:</label>
+        <input type="text" id="nationality" name="nationality" required><br><br>
+
+        <label for="fname">First Name:</label>
+        <input type="text" id="fname" name="fname" required><br><br>
+
+        <label for="mname">Middle Name:</label>
+        <input type="text" id="mname" name="mname"><br><br>
+
+        <label for="lname">Last Name:</label>
+        <input type="text" id="lname" name="lname" required><br><br>
+
+        <label for="user_type">User Type:</label>
+        <select id="user_type" name="user_type" onchange="handleUserTypeChange()" required>
+            <option value="">Select User Type</option>
+            <option value="Student">Student</option>
+            <option value="Staff">Staff</option>
+            <option value="Faculty">Faculty</option>
+            <option value="Admin">Admin</option>
+        </select><br><br>
+
+        <!-- Student-specific fields -->
+        <div id="student-fields" style="display: none;">
+            <h3>Student Details</h3>
+            <label for="enroll_year">Enrollment Year:</label>
+            <input type="number" id="enroll_year" name="enroll_year"><br><br>
+
+            <label for="study_status">Study Status:</label>
+            <input type="text" id="study_status" name="study_status"><br><br>
+        </div>
+
+        <!-- Staff-specific fields -->
+        <div id="staff-fields" style="display: none;">
+            <h3>Staff Details</h3>
+            <label for="position">Position:</label>
+            <input type="text" id="position" name="position"><br><br>
+        </div>
+
+        <!-- Faculty-specific fields -->
+        <div id="faculty-fields" style="display: none;">
+            <h3>Faculty Details</h3>
+            <label for="department">Department:</label>
+            <input type="text" id="department" name="department"><br><br>
+        </div>
+
+        <button type="submit">Create User</button>
+    </form>
+</body>
+</html>

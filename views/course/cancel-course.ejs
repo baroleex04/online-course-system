@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cancel Course</title>
+</head>
+<body>
+    <h1>Cancel a Registered Course</h1>
+    <% if (courses.length > 0) { %>
+        <form action="/cancel-course" method="POST">
+            <label for="cid">Select Course:</label>
+            <select id="cid" name="cid" required>
+                <% courses.forEach(course => { %>
+                    <option value="<%= course.cid %>"><%= course.name %> (<%= course.credit %> credits)</option>
+                <% }) %>
+            </select><br><br>
+            <button type="submit">Cancel Course</button>
+        </form>
+    <% } else { %>
+        <p>You have not registered for any courses.</p>
+    <% } %>
+</body>
+</html>
