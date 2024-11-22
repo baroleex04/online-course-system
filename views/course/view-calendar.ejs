@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Schedule</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: center;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        .time-slot {
+            width: 50px;
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <h1>My Registered Courses (Current Semester)</h1>
+    <table>
+        <thead>
+            <tr>
+                <th class="time-slot">Time/Day</th>
+                <th>Monday</th>
+                <th>Tuesday</th>
+                <th>Wednesday</th>
+                <th>Thursday</th>
+                <th>Friday</th>
+                <th>Saturday</th>
+                <th>Sunday</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% for (let period = 1; period <= 12; period++) { %>
+                <tr>
+                    <td class="time-slot">Period <%= period %></td>
+                    <% for (let day = 2; day <= 8; day++) { %>
+                        <td>
+                            <%= timetable[period] && timetable[period][day] ? timetable[period][day] : '' %>
+                        </td>
+                    <% } %>
+                </tr>
+            <% } %>
+        </tbody>
+    </table>
+</body>
+</html>

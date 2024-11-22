@@ -3,35 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cancel Course</title>
+    <title>Delete Course</title>
 </head>
 <body>
-    <h1>Cancel a Registered Course</h1>
-    <% if (successMessage) { %>
-        <p style="color: green;"><%= successMessage %></p>
-    <% } %>
+    <h1>Delete a Course</h1>
     <% if (courses.length > 0) { %>
         <ul>
             <% courses.forEach(course => { %>
                 <li>
                     <h3><%= course.name %> (<%= course.cid %>) - Semester: <%= course.semester %></h3>
                     <p>Credits: <%= course.credit %></p>
-                    <p>Timetable:</p>
-                    <ul>
-                        <% course.timetable.forEach(slot => { %>
-                            <li>Day: <%= slot.week_day %>, Period: <%= slot.class_period %></li>
-                        <% }) %>
-                    </ul>
-                    <form action="/cancel-course" method="POST">
+                    <p>Instructor: <%= course.instructor %></p>
+                    <form action="/delete-course" method="POST">
                         <input type="hidden" name="cid" value="<%= course.cid %>" />
                         <input type="hidden" name="semester" value="<%= course.semester %>" />
-                        <button type="submit">Cancel Registration</button>
+                        <button type="submit">Delete Course</button>
                     </form>
                 </li>
             <% }) %>
         </ul>
     <% } else { %>
-        <p>You have not registered for any courses.</p>
+        <p>No courses available for deletion.</p>
     <% } %>
 </body>
 </html>

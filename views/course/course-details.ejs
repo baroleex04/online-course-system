@@ -3,18 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Course Details: <%= course.name %></title>
+    <title>Course Details</title>
+    <style>
+        table {
+            width: 50%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        table, th, td {
+            border: 1px solid #000;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+    </style>
 </head>
 <body>
-    <h1>Course Details</h1>
+    <h1>Course Details: <%= course.name %> (<%= course.cid %>)</h1>
+    <table>
+        <tr>
+            <th>Course ID</th>
+            <td><%= course.cid %></td>
+        </tr>
+        <tr>
+            <th>Name</th>
+            <td><%= course.name %></td>
+        </tr>
+        <tr>
+            <th>Credits</th>
+            <td><%= course.credit %></td>
+        </tr>
+        <tr>
+            <th>Semester</th>
+            <td><%= course.semester %></td>
+        </tr>
+        <tr>
+            <th>Instructor</th>
+            <td><%= course.instructor %></td>
+        </tr>
+    </table>
 
-    <p><strong>Course ID:</strong> <%= course.cid %></p>
-    <p><strong>Current Version:</strong> <%= course.curversion %></p>
-    <p><strong>Name:</strong> <%= course.name %></p>
-    <p><strong>Credit:</strong> <%= course.credit %></p>
-    <p><strong>Instructor:</strong> <%= course.instructor %></p>
-    <p><strong>Class Period:</strong> <%= course.classperiod %></p>
-
-    <a href="javascript:history.back()">Go Back</a>
+    <h2>Timetable</h2>
+    <% if (course.timetable.length > 0) { %>
+        <table>
+            <thead>
+                <tr>
+                    <th>Day</th>
+                    <th>Period</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% course.timetable.forEach(slot => { %>
+                    <tr>
+                        <td>
+                            <% switch (slot.week_day) {
+                                case 2: %>Monday<% break; %>
+                                case 3: %>Tuesday<% break; %>
+                                case 4: %>Wednesday<% break; %>
+                                case 5: %>Thursday<% break; %>
+                                case 6: %>Friday<% break; %>
+                                case 7: %>Saturday<% break; %>
+                                case 8: %>Sunday<% break; %>
+                            <% } %>
+                        </td>
+                        <td>Period <%= slot.class_period %></td>
+                    </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    <% } else { %>
+        <p>No timetable available for this course.</p>
+    <% } %>
+    <a href="/courses">Back to Courses</a>
 </body>
 </html>

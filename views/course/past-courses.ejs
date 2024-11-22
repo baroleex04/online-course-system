@@ -3,24 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Search Results</title>
+    <title>Past Courses</title>
 </head>
 <body>
-    <h1>Search Results for "<%= query %>"</h1>
+    <h1>Past Courses</h1>
     <% if (courses.length > 0) { %>
         <ul>
             <% courses.forEach(course => { %>
                 <li>
-                    <h3><%= course.name %> (<%= course.cid %>) - Semester: <%= course.semester %></h3>
+                    <h3><%= course.name %> (<%= course.cid %>)</h3>
                     <p>Credits: <%= course.credit %></p>
+                    <p>Semester: <%= course.semester %> 
+                       (Year: 20<%= course.semester.slice(0, 2) %>, Semester: <%= course.semester.slice(2) %>)</p>
                     <p>Instructor: <%= course.instructor %></p>
-                    <a href="/course-details/<%= course.cid %>/<%= course.semester %>">View Details</a>
                 </li>
             <% }) %>
         </ul>
     <% } else { %>
-        <p>No courses found for your search.</p>
+        <p>You have not taken any courses in the past.</p>
     <% } %>
-    <a href="/courses">Back to Courses</a>
 </body>
 </html>

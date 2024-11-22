@@ -4,30 +4,67 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Course</title>
+    <script>
+        function addTimetableEntry() {
+            const container = document.getElementById('timetable-container');
+            const row = document.createElement('div');
+            row.className = 'timetable-entry';
+
+            row.innerHTML = `
+                <select name="week_day[]" required>
+                    <option value="2">Monday</option>
+                    <option value="3">Tuesday</option>
+                    <option value="4">Wednesday</option>
+                    <option value="5">Thursday</option>
+                    <option value="6">Friday</option>
+                    <option value="7">Saturday</option>
+                    <option value="8">Sunday</option>
+                </select>
+                <select name="class_period[]" required>
+                    <% for (let i = 1; i <= 12; i++) { %>
+                        <option value="<%= i %>">Period <%= i %></option>
+                    <% } %>
+                </select>
+                <button type="button" onclick="this.parentElement.remove()">Remove</button>
+            `;
+
+            container.appendChild(row);
+        }
+    </script>
 </head>
 <body>
-    <h1>Edit Course: <%= course.name %></h1>
-    <!-- Example delete form -->
-<form action="/delete-course" method="POST">
-    <input type="hidden" name="cid" value="<%= course.cid %>">
-    <button type="submit">Delete</button>
-</form>
-    <form action="/edit-course/<%= course.cid %>" method="POST">
-        <label for="curversion">Current Version:</label>
-        <input type="text" id="curversion" name="curversion" value="<%= course.curversion %>" required><br><br>
+    <h1>Edit Course: <%= course.name %> (<%= course.cid %>) - Semester: <%= course.semester %></h1>
+    <form action="/edit-course/<%= course.cid %>/<%= course.semester %>" method="POST">
+        <label>Course Name:</label>
+        <input type="text" name="name" value="<%= course.name %>" required /><br>
+        <label>Credits:</label>
+        <input type="number" name="credit" value="<%= course.credit %>" required min="1" max="10" /><br>
+        <label>Instructor:</label>
+        <input type="text" name="instructor" value="<%= course.instructor %>" required /><br>
 
-        <label for="name">Name:</label>
-        <input type="text" id="name" name="name" value="<%= course.name %>" required><br><br>
-
-        <label for="credit">Credit:</label>
-        <input type="number" id="credit" name="credit" value="<%= course.credit %>" required><br><br>
-
-        <label for="instructor">Instructor:</label>
-        <input type="text" id="instructor" name="instructor" value="<%= course.instructor %>" required><br><br>
-
-        <label for="classperiod">Class Period:</label>
-        <input type="text" id="classperiod" name="classperiod" value="<%= course.classperiod %>"><br><br>
-
+        <h2>Timetable</h2>
+        <div id="timetable-container">
+            <% course.timetable.forEach(slot => { %>
+                <div class="timetable-entry">
+                    <select name="week_day[]" required>
+                        <option value="2" <%= slot.week_day === 2 ? 'selected' : '' %>>Monday</option>
+                        <option value="3" <%= slot.week_day === 3 ? 'selected' : '' %>>Tuesday</option>
+                        <option value="4" <%= slot.week_day === 4 ? 'selected' : '' %>>Wednesday</option>
+                        <option value="5" <%= slot.week_day === 5 ? 'selected' : '' %>>Thursday</option>
+                        <option value="6" <%= slot.week_day === 6 ? 'selected' : '' %>>Friday</option>
+                        <option value="7" <%= slot.week_day === 7 ? 'selected' : '' %>>Saturday</option>
+                        <option value="8" <%= slot.week_day === 8 ? 'selected' : '' %>>Sunday</option>
+                    </select>
+                    <select name="class_period[]" required>
+                        <% for (let i = 1; i <= 12; i++) { %>
+                            <option value="<%= i %>" <%= slot.class_period === i ? 'selected' : '' %>>Period <%= i %></option>
+                        <% } %>
+                    </select>
+                    <button type="button" onclick="this.parentElement.remove()">Remove</button>
+                </div>
+            <% }) %>
+        </div>
+        <button type="button" onclick="addTimetableEntry()">Add Timetable Entry</button><br>
         <button type="submit">Update Course</button>
     </form>
 </body>

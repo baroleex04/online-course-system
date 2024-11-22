@@ -1,6 +1,9 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const session = require('express-session');
+const authorizeRole = require('./middleware/authorizeRole');
+const logActivity = require('./middleware/logActivity');
+const updateHistoryCourses = require('./modules/updateHistoryCourses'); // Adjust path as needed
 const connection = require('./db/database'); // Your database connection
 const app = express();
 
@@ -16,22 +19,7 @@ app.use(
 app.set('view engine', 'ejs');
 app.set('views', './views');
 
-// middleware function
-function authorizeRole(allowedRoles) {
-    return (req, res, next) => {
-        const userType = req.session.user_type;
-
-        if (!userType) {
-            return res.redirect('/login');
-        }
-
-        if (!allowedRoles.includes(userType)) {
-            return res.status(403).send('Access denied');
-        }
-
-        next();
-    };
-}
+updateHistoryCourses();
 
 // Middleware to Pass Session Data to Templates
 app.use((req, res, next) => {
@@ -40,13 +28,12 @@ app.use((req, res, next) => {
     next();
 });
 
-
-// Route to Render Login Page
+// GET :/login
 app.get('/login', (req, res) => {
     res.render('user/login'); // Render login form
 });
 
-// Route to Handle Login Submission
+// POST :/login
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
 
@@ -76,7 +63,7 @@ app.post('/login', (req, res) => {
     });
 });
 
-// Route to Logout
+// GET :/logout
 app.get('/logout', (req, res) => {
     req.session.destroy((err) => {
         if (err) {
@@ -88,108 +75,283 @@ app.get('/logout', (req, res) => {
     });
 });
 
-// Route to Render the Home Page
+// GET :/
 app.get('/', (req, res) => {
     res.render('home'); // Render home page with navbar
 });
 
-// Route to Render Available Courses for Registration
-app.get("/register-course", authorizeRole(['Student']), (req, res) => {
-    const { cid } = req.body;
-    const studentId = req.session.user_id; // Assuming user_id is stored in the session
+// GET :/register-course
+app.get('/register-course', authorizeRole(['Student']), (req, res) => {
+    const studentId = req.session.user_id;
 
-    if (!studentId) {
-        return res.status(400).send("User ID is not found.")
-    }
     const query = `
-        SELECT cid, name, credit
-        FROM Course
-        WHERE cid NOT IN (
-            SELECT course_cid FROM Registration WHERE user_id = ?
+        SELECT c.cid, c.name, c.credit, c.semester, t.week_day, t.class_period
+        FROM Course c
+        JOIN Timetable t ON c.cid = t.course_cid AND c.semester = t.semester
+        WHERE NOT EXISTS (
+            SELECT 1 FROM Registration r
+            WHERE r.course_cid = c.cid AND r.semester = c.semester AND r.user_id = ?
         )
+        ORDER BY c.cid, t.week_day, t.class_period
     `;
 
     connection.query(query, [studentId], (err, results) => {
         if (err) {
-            console.error("Error fetching available courses:", err);
-            res.status(500).send("Error fetching available courses.");
+            console.error('Error fetching courses:', err);
+            res.status(500).send('Error fetching courses.');
             return;
         }
 
-        res.render("course/register-course", { courses: results });
+        // Group courses by `cid` and `semester` for display
+        const courses = {};
+        results.forEach((row) => {
+            const key = `${row.cid}-${row.semester}`;
+            if (!courses[key]) {
+                courses[key] = {
+                    cid: row.cid,
+                    name: row.name,
+                    credit: row.credit,
+                    semester: row.semester,
+                    timetable: [],
+                };
+            }
+            courses[key].timetable.push({ week_day: row.week_day, class_period: row.class_period });
+        });
+
+        res.render('course/register-course', { courses: Object.values(courses), errorMessage: null });
     });
 });
 
-// Route to Handle Course Registration
-app.post("/register-course", authorizeRole(['Student']), (req, res) => {
-    const { cid } = req.body;
-    const studentId = req.session.user_id; // Assuming user_id is stored in the session
+// POST :/register-course
+app.post('/register-course', authorizeRole(['Student']), (req, res) => {
+    const { cid, semester } = req.body;
+    const studentId = req.session.user_id;
 
-    const query = `
-        INSERT INTO Registration (user_id, course_cid)
-        VALUES (?, ?)
+    // Query to check for overlapping timetable entries
+    const overlapCheckQuery = `
+        SELECT t.week_day, t.class_period
+        FROM Timetable t
+        JOIN Registration r ON t.course_cid = r.course_cid AND t.semester = r.semester
+        WHERE r.user_id = ?
+        AND EXISTS (
+            SELECT 1
+            FROM Timetable t2
+            WHERE t2.course_cid = ? AND t2.semester = ?
+            AND t2.week_day = t.week_day
+            AND t2.class_period = t.class_period
+        )
     `;
 
-    connection.query(query, [studentId, cid], (err) => {
+    connection.query(overlapCheckQuery, [studentId, cid, semester], (err, results) => {
         if (err) {
-            console.error("Error registering for course:", err);
-            res.status(500).send("Error registering for course.");
+            console.error('Error checking for overlapping timetable:', err);
+            res.status(500).send('Error checking for overlapping timetable.');
             return;
         }
 
-        res.send("Course registered successfully!");
+        if (results.length > 0) {
+            const errorMessage = 'You cannot register for this course because it conflicts with your existing schedule.';
+            const fetchCoursesQuery = `
+                SELECT c.cid, c.name, c.credit, c.semester, t.week_day, t.class_period
+                FROM Course c
+                JOIN Timetable t ON c.cid = t.course_cid AND c.semester = t.semester
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM Registration r
+                    WHERE r.course_cid = c.cid AND r.semester = c.semester AND r.user_id = ?
+                )
+                ORDER BY c.cid, t.week_day, t.class_period
+            `;
+
+            connection.query(fetchCoursesQuery, [studentId], (fetchErr, fetchResults) => {
+                if (fetchErr) {
+                    console.error('Error refetching courses:', fetchErr);
+                    res.status(500).send('Error fetching courses.');
+                    return;
+                }
+
+                const courses = {};
+                fetchResults.forEach((row) => {
+                    const key = `${row.cid}-${row.semester}`;
+                    if (!courses[key]) {
+                        courses[key] = {
+                            cid: row.cid,
+                            name: row.name,
+                            credit: row.credit,
+                            semester: row.semester,
+                            timetable: [],
+                        };
+                    }
+                    courses[key].timetable.push({ week_day: row.week_day, class_period: row.class_period });
+                });
+
+                res.render('course/register-course', { courses: Object.values(courses), errorMessage });
+            });
+            return;
+        }
+
+        // If no overlap, proceed with registration
+        const registerQuery = `
+            INSERT INTO Registration (user_id, course_cid, semester)
+            VALUES (?, ?, ?)
+        `;
+
+        connection.query(registerQuery, [studentId, cid, semester], (err) => {
+            if (err) {
+                console.error('Error registering for course:', err);
+                res.status(500).send('Error registering for course.');
+                return;
+            }
+
+            logActivity(studentId, `Registered for course: ${cid} in semester ${semester}`);
+
+            res.redirect('/register-course');
+        });
     });
 });
 
-// Route to Render Registered Courses for Cancellation
-app.get("/cancel-course", authorizeRole(['Student']), (req, res) => {
-    const studentId = req.session.user_id; // Assuming user_id is stored in the session
+// GET :/cancel-course
+app.get('/cancel-course', authorizeRole(['Student']), (req, res) => {
+    const studentId = req.session.user_id;
+
     const query = `
-        SELECT c.cid, c.name, c.credit
-        FROM Course c
-        JOIN Registration r ON c.cid = r.course_cid
+        SELECT c.cid, c.name, c.credit, r.semester, t.week_day, t.class_period
+        FROM Registration r
+        JOIN Course c ON r.course_cid = c.cid AND r.semester = c.semester
+        JOIN Timetable t ON c.cid = t.course_cid AND c.semester = t.semester
+        WHERE r.user_id = ?
+        ORDER BY c.cid, t.week_day, t.class_period
+    `;
+
+    connection.query(query, [studentId], (err, results) => {
+        if (err) {
+            console.error('Error fetching registered courses:', err);
+            res.status(500).send('Error fetching registered courses.');
+            return;
+        }
+
+        // Group courses by `cid` and `semester` for display
+        const courses = {};
+        results.forEach((row) => {
+            const key = `${row.cid}-${row.semester}`;
+            if (!courses[key]) {
+                courses[key] = {
+                    cid: row.cid,
+                    name: row.name,
+                    credit: row.credit,
+                    semester: row.semester,
+                    timetable: [],
+                };
+            }
+            courses[key].timetable.push({ week_day: row.week_day, class_period: row.class_period });
+        });
+
+        res.render('course/cancel-course', { courses: Object.values(courses), successMessage: null });
+    });
+});
+
+// POST :/cancel-course
+app.post('/cancel-course', authorizeRole(['Student']), (req, res) => {
+    const { cid, semester } = req.body;
+    const studentId = req.session.user_id;
+
+    const query = `
+        DELETE FROM Registration
+        WHERE user_id = ? AND course_cid = ? AND semester = ?
+    `;
+
+    connection.query(query, [studentId, cid, semester], (err) => {
+        if (err) {
+            console.error('Error canceling course:', err);
+            res.status(500).send('Error canceling course.');
+            return;
+        }
+
+        // Log the activity
+        logActivity(studentId, `Canceled course: ${cid} in semester ${semester}`);
+        // After successful cancellation, redirect to fetch updated list
+        res.redirect('/cancel-course');
+    });
+});
+
+// GET :/feedback
+app.get('/feedback', authorizeRole(['Student']), (req, res) => {
+    const studentId = req.session.user_id;
+
+    const query = `
+        SELECT c.cid, c.name, c.semester
+        FROM Registration r
+        JOIN Course c ON r.course_cid = c.cid AND r.semester = c.semester
         WHERE r.user_id = ?
     `;
 
     connection.query(query, [studentId], (err, results) => {
         if (err) {
-            console.error("Error fetching registered courses:", err);
-            res.status(500).send("Error fetching registered courses.");
+            console.error('Error fetching registered courses:', err);
+            res.status(500).send('Error fetching registered courses.');
             return;
         }
 
-        res.render("course/cancel-course", { courses: results });
+        res.render('feedback/submit-feedback', { courses: results });
     });
 });
 
-// Route to Handle Course Cancellation
-app.post("/cancel-course", authorizeRole(['Student']), (req, res) => {
-    const { cid } = req.body;
-    const studentId = req.session.user_id; // Assuming user_id is stored in the session
+// POST :/feedback
+app.post('/feedback', authorizeRole(['Student']), (req, res) => {
+    const { cid, semester, feedback_des } = req.body;
+    const studentId = req.session.user_id;
 
     const query = `
-        DELETE FROM Registration
-        WHERE user_id = ? AND course_cid = ?
+        INSERT INTO Feed_Back (user_id, course_cid, semester, feedback_des)
+        VALUES (?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE feedback_des = VALUES(feedback_des)
     `;
 
-    connection.query(query, [studentId, cid], (err) => {
+    connection.query(query, [studentId, cid, semester, feedback_des], (err) => {
         if (err) {
-            console.error("Error canceling course:", err);
-            res.status(500).send("Error canceling course.");
+            console.error('Error submitting feedback:', err);
+            res.status(500).send('Error submitting feedback.');
             return;
         }
 
-        res.send("Course canceled successfully!");
+        // Log the activity
+        const userId = req.session.user_id;
+        logActivity(userId, `Feedback course: ${cid} for semester ${semester}`);
+
+        res.redirect('/feedback'); // Redirect back to the feedback page
     });
 });
 
+// GET :/view-feedback/:cid/:semester
+app.get('/view-feedback/:cid/:semester', authorizeRole(['Admin', 'Faculty', 'Student']), (req, res) => {
+    const { cid, semester } = req.params;
 
-// Route to Render the Create User Form
+    const query = `
+        SELECT f.feedback_des, u.fname, u.lname
+        FROM Feed_Back f
+        JOIN Users u ON f.user_id = u.user_id
+        WHERE f.course_cid = ? AND f.semester = ?
+    `;
+
+    connection.query(query, [cid, semester], (err, results) => {
+        if (err) {
+            console.error('Error fetching feedback:', err);
+            res.status(500).send('Error fetching feedback.');
+            return;
+        }
+
+        res.render('feedback/view-feedback', {
+            feedback: results,
+            course: { cid, semester },
+        });
+    });
+});
+
+// GET :/create-user
 app.get('/create-user', authorizeRole(['Admin']), (req, res) => {
     res.render('user/create-user'); // Render the form template
 });
 
-// Route to Handle Form Submission
+// POST :/create-user
 app.post('/create-user', authorizeRole(['Admin']), (req, res) => {
     const {
         user_id,
@@ -204,7 +366,7 @@ app.post('/create-user', authorizeRole(['Admin']), (req, res) => {
         user_type,
         enroll_year,
         study_status,
-        position, 
+        position,
         department
     } = req.body;
 
@@ -264,208 +426,409 @@ app.post('/create-user', authorizeRole(['Admin']), (req, res) => {
                     );
                     break;
 
-                    case 'Faculty':
-                        const facultyQuery = `
-                            INSERT INTO Faculty (user_id, department)
-                            VALUES (?, ?)
-                        `;
-                        connection.query(
-                            facultyQuery,
-                            [user_id, department],
-                            (err) => {
-                                if (err) {
-                                    console.error('Error creating faculty:', err);
-                                    res.status(500).send('Error creating faculty. Please try again.');
-                                    return;
-                                }
-                                res.send('Faculty created successfully!');
+                case 'Faculty':
+                    const facultyQuery = `
+                        INSERT INTO Faculty (user_id, department)
+                        VALUES (?, ?)
+                    `;
+                    connection.query(
+                        facultyQuery,
+                        [user_id, department],
+                        (err) => {
+                            if (err) {
+                                console.error('Error creating faculty:', err);
+                                res.status(500).send('Error creating faculty. Please try again.');
+                                return;
                             }
-                        );
-                        break;
+                            res.send('Faculty created successfully!');
+                        }
+                    );
+                    break;
 
                 default:
-                    res.send('Admin created successfully!');
-            }
-        }
-    );
-});
-
-// Display Add Course Form
-app.get("/add-course", authorizeRole(['Admin', 'Staff', 'Faculty']), (req, res) => {
-    res.render("course/add-course"); // EJS template for adding a course
-});
-
-// Handle Course Creation
-app.post("/add-course", (req, res) => {
-    const { cid, curversion, name, credit, instructor, classperiod, semester_id } = req.body;
-
-    // Insert into Course table
-    let courseQuery = `
-        INSERT INTO Course (cid, curversion, name, credit, instructor, classperiod)
-        VALUES (?, ?, ?, ?, ?, ?)
-    `;
-    connection.query(
-        courseQuery,
-        [cid, curversion, name, credit, instructor, classperiod || null],
-        (err, result) => {
-            if (err) {
-                console.error("Error adding course:", err);
-                res.status(500).send("Error adding course. Please try again later.");
-                return;
-            }
-
-            // Initialize course in Semester table
-            if (semester_id) {
-                let semesterQuery = `
-                    INSERT INTO Semester (semester_id, course_cid, class_period)
-                    VALUES (?, ?, ?)
-                `;
-                connection.query(
-                    semesterQuery,
-                    [semester_id, cid, classperiod], // Defaulting class_period to 1; adjust as needed
-                    (err, result) => {
-                        if (err) {
-                            console.error("Error initializing course in semester:", err);
-                            res.status(500).send("Course added, but semester initialization failed.");
-                            return;
+                    const adminQuery = `
+                        INSERT INTO Admin (user_id)
+                        VALUES (?)
+                    `;
+                    connection.query(
+                        adminQuery,
+                        [user_id],
+                        (err) => {
+                            if (err) {
+                                console.error('Error creating admin:', err);
+                                res.status(500).send('Error creating admin. Please try again.');
+                                return;
+                            }
+                            res.send('Admin created successfully!');
                         }
-                        res.send("Course and semester initialized successfully!");
-                    }
-                );
-            } else {
-                res.send("Course added successfully!");
+                    );
+                    break;
             }
         }
     );
+    // Log the activity
+    const userId = req.session.user_id;
+    logActivity(userId, `Created new user`);
 });
 
-// Route to Delete a Course
-app.post("/delete-course", authorizeRole(['Admin', 'Staff', 'Faculty']), (req, res) => {
-    const { cid } = req.body;
-
-    let deleteQuery = `DELETE FROM Course WHERE cid = ?`;
-    connection.query(deleteQuery, [cid], (err, result) => {
-        if (err) {
-            console.error("Error deleting course:", err);
-            res.status(500).send("Error deleting course. Please try again later.");
-            return;
-        }
-        res.send("Course deleted successfully!");
-    });
+// GET :/add-course
+app.get('/add-course', authorizeRole(['Admin', 'Staff', 'Faculty']), (req, res) => {
+    res.render('course/add-course'); // Renders the add-course.ejs form
 });
 
-// Route to Render Edit Course Form
-app.get("/edit-course/:cid", authorizeRole(['Admin', 'Staff', 'Faculty']), (req, res) => {
-    const { cid } = req.params;
+// POST :/add-course
+app.post('/add-course', authorizeRole(['Admin', 'Staff', 'Faculty']), (req, res) => {
+    const { cid, semester, name, credit, instructor, week_day, class_period } = req.body;
 
-    let selectQuery = `SELECT * FROM Course WHERE cid = ?`;
-    connection.query(selectQuery, [cid], (err, results) => {
-        if (err) {
-            console.error("Error fetching course details:", err);
-            res.status(500).send("Error fetching course details. Please try again later.");
-            return;
-        }
-
-        if (results.length === 0) {
-            res.status(404).send("Course not found.");
-            return;
-        }
-
-        res.render("course/edit-course", { course: results[0] }); // Pass course details to EJS template
-    });
-});
-
-// Route to Handle Course Updates
-app.post("/edit-course/:cid", authorizeRole(['Admin', 'Staff', 'Faculty']), (req, res) => {
-    const { cid } = req.params;
-    const { curversion, name, credit, instructor, classperiod } = req.body;
-
-    let updateQuery = `
-        UPDATE Course
-        SET curversion = ?, name = ?, credit = ?, instructor = ?, classperiod = ?
-        WHERE cid = ?
+    // Insert course details into the Course table
+    const courseQuery = `
+        INSERT INTO Course (cid, semester, name, credit, instructor)
+        VALUES (?, ?, ?, ?, ?)
     `;
 
-    connection.query(
-        updateQuery,
-        [curversion, name, credit, instructor, classperiod, cid],
-        (err, result) => {
+    connection.query(courseQuery, [cid, semester, name, credit, instructor], (err) => {
+        if (err) {
+            console.error('Error adding course:', err);
+            res.status(500).send('Error adding course. Please try again later.');
+            return;
+        }
+
+        // Combine week_day and class_period arrays into rows
+        const timetableEntries = [];
+        if (Array.isArray(week_day) && Array.isArray(class_period)) {
+            for (let i = 0; i < week_day.length; i++) {
+                timetableEntries.push([cid, semester, week_day[i], class_period[i]]);
+            }
+        }
+
+        // Remove duplicate entries from the array
+        const uniqueEntries = Array.from(new Set(timetableEntries.map(JSON.stringify))).map(JSON.parse);
+
+        // Insert unique timetable rows
+        const timetableQuery = `
+            INSERT INTO Timetable (course_cid, semester, week_day, class_period)
+            VALUES ?
+        `;
+
+        connection.query(timetableQuery, [uniqueEntries], (err) => {
             if (err) {
-                console.error("Error updating course:", err);
-                res.status(500).send("Error updating course. Please try again later.");
+                console.error('Error adding timetable entries:', err);
+                res.status(500).send('Course added, but timetable entries failed.');
                 return;
             }
-            res.send("Course updated successfully!");
-        }
-    );
+
+            res.send('Course and timetable added successfully!');
+        });
+    });
+    // Log the activity
+    const userId = req.session.user_id;
+    logActivity(userId, `Added course: ${cid} for semester ${semester}`);
 });
 
-// Route to Display Courses by Semester
-app.get("/courses/:semester_id", authorizeRole(['Admin', 'Staff', 'Faculty', 'Student']), (req, res) => {
-    const { semester_id } = req.params;
-
-    let query = `
-        SELECT c.cid, c.name, c.credit
+// GET :/delete-course
+app.get('/delete-course', authorizeRole(['Admin', 'Faculty', 'Staff']), (req, res) => {
+    const query = `
+        SELECT c.cid, c.name, c.semester, c.credit, c.instructor
         FROM Course c
-        JOIN Semester s ON c.cid = s.course_cid
-        WHERE s.semester_id = ?
     `;
 
-    connection.query(query, [semester_id], (err, results) => {
+    connection.query(query, (err, results) => {
         if (err) {
-            console.error("Error fetching courses for semester:", err);
-            res.status(500).send("Error fetching courses. Please try again later.");
+            console.error('Error fetching courses for deletion:', err);
+            res.status(500).send('Error fetching courses for deletion.');
             return;
         }
 
-        res.render("course/list-courses", { courses: results, semester_id });
+        res.render('course/delete-course', { courses: results });
     });
 });
 
-// Route to Display Full Details of a Course
-app.get("/course-details/:cid", authorizeRole(['Admin', 'Staff', 'Faculty', 'Student']), (req, res) => {
-    const { cid } = req.params;
+//POST :/delete-course
+app.post('/delete-course', authorizeRole(['Admin', 'Faculty', 'Staff']), (req, res) => {
+    const { cid, semester } = req.body;
 
-    let query = `SELECT * FROM Course WHERE cid = ?`;
-    connection.query(query, [cid], (err, results) => {
+    // Delete the course and all related entries
+    const deleteQuery = `
+        DELETE FROM Course
+        WHERE cid = ? AND semester = ?
+    `;
+
+    connection.query(deleteQuery, [cid, semester], (err, result) => {
         if (err) {
-            console.error("Error fetching course details:", err);
-            res.status(500).send("Error fetching course details. Please try again later.");
+            console.error('Error deleting course:', err);
+            res.status(500).send('Error deleting course. Please try again later.');
+            return;
+        }
+
+        res.send('Course deleted successfully!');
+    });
+    // Log the activity
+    const userId = req.session.user_id;
+    logActivity(userId, `Deleted course: ${cid} for semester ${semester}`);
+});
+
+//GET :/edit-course/:cid/:semester
+app.get('/edit-course/:cid/:semester', authorizeRole(['Admin', 'Faculty', 'Staff']), (req, res) => {
+    const { cid, semester } = req.params;
+
+    const courseQuery = `
+        SELECT c.cid, c.name, c.credit, c.semester, c.instructor, t.week_day, t.class_period
+        FROM Course c
+        JOIN Timetable t ON c.cid = t.course_cid AND c.semester = t.semester
+        WHERE c.cid = ? AND c.semester = ?
+    `;
+
+    connection.query(courseQuery, [cid, semester], (err, results) => {
+        if (err) {
+            console.error('Error fetching course details:', err);
+            res.status(500).send('Error fetching course details.');
             return;
         }
 
         if (results.length === 0) {
-            res.status(404).send("Course not found.");
+            res.status(404).send('Course not found.');
             return;
         }
 
-        res.render("course/course-details", { course: results[0] });
+        const course = {
+            cid: results[0].cid,
+            name: results[0].name,
+            credit: results[0].credit,
+            semester: results[0].semester,
+            instructor: results[0].instructor,
+            timetable: results.map((row) => ({
+                week_day: row.week_day,
+                class_period: row.class_period,
+            })),
+        };
+
+        res.render('course/edit-course', { course });
     });
 });
 
-// Route to Search for Courses
-app.get("/search-courses", authorizeRole(['Admin', 'Staff', 'Faculty', 'Student']), (req, res) => {
+//POST :/edit-course/:cid/:semester
+app.post('/edit-course/:cid/:semester', authorizeRole(['Admin', 'Faculty', 'Staff']), (req, res) => {
+    const { cid, semester } = req.params;
+    const { name, credit, instructor, week_day, class_period } = req.body;
+
+    const updateCourseQuery = `
+        UPDATE Course
+        SET name = ?, credit = ?, instructor = ?
+        WHERE cid = ? AND semester = ?
+    `;
+
+    connection.query(updateCourseQuery, [name, credit, instructor, cid, semester], (err) => {
+        if (err) {
+            console.error('Error updating course details:', err);
+            res.status(500).send('Error updating course details.');
+            return;
+        }
+
+        // Delete existing timetable entries
+        const deleteTimetableQuery = `
+            DELETE FROM Timetable
+            WHERE course_cid = ? AND semester = ?
+        `;
+
+        connection.query(deleteTimetableQuery, [cid, semester], (err) => {
+            if (err) {
+                console.error('Error clearing timetable entries:', err);
+                res.status(500).send('Error clearing timetable entries.');
+                return;
+            }
+
+            // Insert new timetable entries
+            const timetableEntries = [];
+            if (Array.isArray(week_day) && Array.isArray(class_period)) {
+                for (let i = 0; i < week_day.length; i++) {
+                    timetableEntries.push([cid, semester, week_day[i], class_period[i]]);
+                }
+            }
+
+            const insertTimetableQuery = `
+                INSERT INTO Timetable (course_cid, semester, week_day, class_period)
+                VALUES ?
+            `;
+
+            connection.query(insertTimetableQuery, [timetableEntries], (err) => {
+                if (err) {
+                    console.error('Error updating timetable entries:', err);
+                    res.status(500).send('Error updating timetable entries.');
+                    return;
+                }
+
+                res.send('Course updated successfully!');
+            });
+        });
+    });
+    // Log the activity
+    const userId = req.session.user_id;
+    logActivity(userId, `Edited course: ${cid} for semester ${semester}`);
+});
+
+//GET :/courses
+app.get('/courses', (req, res) => {
+    const { query, criteria } = req.query; // Capture search query and selected criteria
+
+    const validCriteria = ['cid', 'name', 'semester', 'instructor']; // Allowable criteria
+    const selectedCriteria = validCriteria.includes(criteria) ? criteria : 'cid'; // Default to 'cid'
+
+    const baseQuery = `
+        SELECT c.cid, c.name, c.credit, c.semester, c.instructor
+        FROM Course c
+    `;
+
+    const searchCondition = `
+        WHERE c.${selectedCriteria} LIKE ?
+    `;
+
+    const orderBy = `ORDER BY c.cid, c.semester`;
+
+    const finalQuery = query
+        ? `${baseQuery} ${searchCondition} ${orderBy}`
+        : `${baseQuery} ${orderBy}`;
+
+    const queryParams = query ? [`%${query}%`] : [];
+
+    connection.query(finalQuery, queryParams, (err, results) => {
+        if (err) {
+            console.error('Error fetching courses:', err);
+            res.status(500).send('Error fetching courses.');
+            return;
+        }
+
+        res.render('course/list-courses', {
+            courses: results,
+            query: query || '',
+            criteria: criteria || 'cid',
+        });
+    });
+});
+
+//GET :/course-details/:cid/:semester
+app.get('/course-details/:cid/:semester', (req, res) => {
+    const { cid, semester } = req.params;
+
+    const query = `
+        SELECT c.cid, c.name, c.credit, c.semester, c.instructor, 
+               t.week_day, t.class_period
+        FROM Course c
+        JOIN Timetable t ON c.cid = t.course_cid AND c.semester = t.semester
+        WHERE c.cid = ? AND c.semester = ?
+        ORDER BY t.week_day, t.class_period
+    `;
+
+    connection.query(query, [cid, semester], (err, results) => {
+        if (err) {
+            console.error('Error fetching course details:', err);
+            res.status(500).send('Error fetching course details.');
+            return;
+        }
+
+        if (results.length === 0) {
+            res.status(404).send('Course not found.');
+            return;
+        }
+
+        const course = {
+            cid: results[0].cid,
+            name: results[0].name,
+            credit: results[0].credit,
+            semester: results[0].semester,
+            instructor: results[0].instructor,
+            timetable: results.map((row) => ({
+                week_day: row.week_day,
+                class_period: row.class_period,
+            })),
+        };
+
+        res.render('course/course-details', { course });
+    });
+});
+
+//GET :/search-courses
+app.get('/search-courses', (req, res) => {
     const { query } = req.query;
 
-    let searchQuery = `
-        SELECT cid, name, credit
-        FROM Course
-        WHERE cid LIKE ? OR name LIKE ?
+    const searchQuery = `
+        SELECT c.cid, c.name, c.credit, c.semester, c.instructor
+        FROM Course c
+        WHERE c.cid LIKE ? OR c.name LIKE ? OR c.semester LIKE ? OR c.instructor LIKE ?
+        ORDER BY c.cid, c.semester
     `;
 
-    connection.query(searchQuery, [`%${query}%`, `%${query}%`], (err, results) => {
+    connection.query(searchQuery, [`%${query}%`, `%${query}%`, `%${query}%`, `%${query}%`], (err, results) => {
         if (err) {
-            console.error("Error searching for courses:", err);
-            res.status(500).send("Error searching for courses. Please try again later.");
+            console.error('Error searching courses:', err);
+            res.status(500).send('Error searching courses.');
             return;
         }
 
-        res.render("course/search-results", { courses: results, query });
+        res.render('course/search-results', { courses: results, query });
     });
 });
 
+//GET :/past-courses
+app.get('/past-courses', authorizeRole(['Student']), (req, res) => {
+    const studentId = req.session.user_id;
 
-// 404 Page
+    const query = `
+        SELECT c.cid, c.name, c.credit, h.semester, c.instructor
+        FROM History_courses h
+        JOIN Course c ON h.course_cid = c.cid AND h.semester = c.semester
+        WHERE h.user_id = ?
+        ORDER BY h.semester DESC
+    `;
+
+    connection.query(query, [studentId], (err, results) => {
+        if (err) {
+            console.error('Error fetching past courses:', err);
+            res.status(500).send('Error fetching past courses.');
+            return;
+        }
+
+        res.render('course/past-courses', { courses: results });
+    });
+});
+
+//GET :/view-calendar
+app.get('/view-calendar', authorizeRole(['Student']), (req, res) => {
+    const studentId = req.session.user_id;
+
+    // Calculate the current semester code
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1; // Months are 0-indexed
+    const currentSemester = Math.ceil(currentMonth / 4); // Divide the year into 3 semesters
+    const currentSemesterCode = `${currentYear % 100}${currentSemester}`; // Format: YY + Semester (e.g., 231)
+
+    const query = `
+        SELECT c.name, t.week_day, t.class_period
+        FROM Registration r
+        JOIN Timetable t ON r.course_cid = t.course_cid AND r.semester = t.semester
+        JOIN Course c ON r.course_cid = c.cid AND r.semester = c.semester
+        WHERE r.user_id = ? AND r.semester = ?
+        ORDER BY t.week_day, t.class_period
+    `;
+
+    connection.query(query, [studentId, currentSemesterCode], (err, results) => {
+        if (err) {
+            console.error('Error fetching registered courses:', err);
+            res.status(500).send('Error fetching registered courses.');
+            return;
+        }
+
+        // Group results by week_day and class_period for easier rendering
+        const timetable = {};
+        results.forEach(({ name, week_day, class_period }) => {
+            if (!timetable[class_period]) timetable[class_period] = {};
+            timetable[class_period][week_day] = name;
+        });
+
+        res.render('course/view-calendar', { timetable });
+    });
+});
+
+//GET :/*
 app.get("/*", (req, res) => {
     res.render("404");
 });

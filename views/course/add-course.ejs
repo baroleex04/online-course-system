@@ -4,30 +4,83 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Add Course</title>
+    <script>
+        // Function to add a new timetable entry row
+        function addTimetableEntry() {
+            const container = document.getElementById('timetable-container');
+            const row = document.createElement('div');
+            row.className = 'timetable-entry';
+
+            row.innerHTML = `
+                <select name="week_day[]" required>
+                    <option value="2">Monday</option>
+                    <option value="3">Tuesday</option>
+                    <option value="4">Wednesday</option>
+                    <option value="5">Thursday</option>
+                    <option value="6">Friday</option>
+                    <option value="7">Saturday</option>
+                    <option value="8">Sunday</option>
+                </select>
+                <select name="class_period[]" required>
+                    <% for (let i = 1; i <= 12; i++) { %>
+                        <option value="<%= i %>">Period <%= i %></option>
+                    <% } %>
+                </select>
+                <button type="button" onclick="this.parentElement.remove()">Remove</button>
+            `;
+
+            container.appendChild(row);
+        }
+        document.querySelector('form').addEventListener('submit', (event) => {
+            const weekDays = Array.from(document.querySelectorAll("select[name='week_day[]']")).map((el) => el.value);
+            const classPeriods = Array.from(document.querySelectorAll("select[name='class_period[]']")).map((el) => el.value);
+        
+            const timetableSet = new Set();
+            for (let i = 0; i < weekDays.length; i++) {
+                const key = `${weekDays[i]}-${classPeriods[i]}`;
+                if (timetableSet.has(key)) {
+                    alert('Duplicate timetable entries are not allowed!');
+                    event.preventDefault();
+                    return;
+                }
+                timetableSet.add(key);
+            }
+        });        
+    </script>
 </head>
 <body>
-    <h1>Add a New Course</h1>
+    <h1>Add Course</h1>
     <form action="/add-course" method="POST">
-        <label for="cid">Course ID:</label>
-        <input type="text" id="cid" name="cid" required><br><br>
+        <!-- Course Details -->
+        <input type="text" name="cid" placeholder="Course ID" required />
+        <input type="text" name="semester" placeholder="Semester (e.g., 2024FALL)" required />
+        <input type="text" name="name" placeholder="Course Name" required />
+        <input type="number" name="credit" placeholder="Credits" required min="1" max="10" />
+        <input type="text" name="instructor" placeholder="Instructor" required />
 
-        <label for="curversion">Current Version:</label>
-        <input type="text" id="curversion" name="curversion" required><br><br>
-
-        <label for="name">Name:</label>
-        <input type="text" id="name" name="name" required><br><br>
-
-        <label for="credit">Credit:</label>
-        <input type="number" id="credit" name="credit" required><br><br>
-
-        <label for="instructor">Instructor:</label>
-        <input type="text" id="instructor" name="instructor" required><br><br>
-
-        <label for="classperiod">Class Period:</label>
-        <input type="text" id="classperiod" name="classperiod"><br><br>
-
-        <label for="semester_id">Semester (optional):</label>
-        <input type="text" id="semester_id" name="semester_id"><br><br>
+        <!-- Timetable Entries -->
+        <h2>Timetable</h2>
+        <div id="timetable-container">
+            <!-- Initial timetable entry -->
+            <div class="timetable-entry">
+                <select name="week_day[]" required>
+                    <option value="2">Monday</option>
+                    <option value="3">Tuesday</option>
+                    <option value="4">Wednesday</option>
+                    <option value="5">Thursday</option>
+                    <option value="6">Friday</option>
+                    <option value="7">Saturday</option>
+                    <option value="8">Sunday</option>
+                </select>
+                <select name="class_period[]" required>
+                    <% for (let i = 1; i <= 12; i++) { %>
+                        <option value="<%= i %>">Period <%= i %></option>
+                    <% } %>
+                </select>
+                <button type="button" onclick="this.parentElement.remove()">Remove</button>
+            </div>
+        </div>
+        <button type="button" onclick="addTimetableEntry()">Add Timetable Entry</button>
 
         <button type="submit">Add Course</button>
     </form>

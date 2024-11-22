@@ -7,16 +7,29 @@
 </head>
 <body>
     <h1>Register for a Course</h1>
+    <% if (errorMessage) { %>
+        <p style="color: red;"><%= errorMessage %></p>
+    <% } %>
     <% if (courses.length > 0) { %>
-        <form action="/register-course" method="POST">
-            <label for="cid">Select Course:</label>
-            <select id="cid" name="cid" required>
-                <% courses.forEach(course => { %>
-                    <option value="<%= course.cid %>"><%= course.name %> (<%= course.credit %> credits)</option>
-                <% }) %>
-            </select><br><br>
-            <button type="submit">Register</button>
-        </form>
+        <ul>
+            <% courses.forEach(course => { %>
+                <li>
+                    <h3><%= course.name %> (<%= course.cid %>) - Semester: <%= course.semester %></h3>
+                    <p>Credits: <%= course.credit %></p>
+                    <p>Timetable:</p>
+                    <ul>
+                        <% course.timetable.forEach(slot => { %>
+                            <li>Day: <%= slot.week_day %>, Period: <%= slot.class_period %></li>
+                        <% }) %>
+                    </ul>
+                    <form action="/register-course" method="POST">
+                        <input type="hidden" name="cid" value="<%= course.cid %>" />
+                        <input type="hidden" name="semester" value="<%= course.semester %>" />
+                        <button type="submit">Register</button>
+                    </form>
+                </li>
+            <% }) %>
+        </ul>
     <% } else { %>
         <p>No courses available for registration.</p>
     <% } %>

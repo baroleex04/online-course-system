@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submit Feedback</title>
+</head>
+<body>
+    <h1>Submit Feedback for Your Courses</h1>
+    <% if (courses.length > 0) { %>
+        <ul>
+            <% courses.forEach(course => { %>
+                <li>
+                    <h3><%= course.name %> (<%= course.cid %>) - Semester: <%= course.semester %></h3>
+                    <form action="/feedback" method="POST">
+                        <input type="hidden" name="cid" value="<%= course.cid %>" />
+                        <input type="hidden" name="semester" value="<%= course.semester %>" />
+                        <textarea name="feedback_des" rows="4" cols="50" placeholder="Enter your feedback" required></textarea><br>
+                        <button type="submit">Submit Feedback</button>
+                    </form>
+                </li>
+            <% }) %>
+        </ul>
+    <% } else { %>
+        <p>You have no courses to provide feedback for.</p>
+    <% } %>
+</body>
+</html>

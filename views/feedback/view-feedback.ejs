@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Feedback</title>
+</head>
+<body>
+    <h1>Feedback for Course: <%= course.cid %> - Semester: <%= course.semester %></h1>
+    <% if (feedback.length > 0) { %>
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>Student Name</th>
+                    <th>Feedback</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% feedback.forEach(entry => { %>
+                    <tr>
+                        <td><%= entry.fname %> <%= entry.lname %></td>
+                        <td><%= entry.feedback_des %></td>
+                    </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    <% } else { %>
+        <p>No feedback has been submitted for this course.</p>
+    <% } %>
+    <a href="/courses">Back to Courses</a>
+</body>
+</html>
