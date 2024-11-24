@@ -3,58 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>List Courses</title>
-    <!-- Include Bootstrap CSS -->
+    <title>View Student Registrations</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
             background: linear-gradient(to right, #6691c8, #2575fc);
             color: #fff;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
         }
         .navbar {
-            background-color: #f8f9fa !important;
-            padding: 0;
+            background-color: #f8f9fa !important; /* Brighter navbar */
+            padding: 0; /* Remove padding for full-height nav items */
         }
         .nav-link:hover {
             background-color: #e0e3e7;
             transform: scale(1.05);
         }
         .container {
-            margin-top: 20px;
-        }
-        .search-form {
-            margin-bottom: 20px;
-        }
-        .course-list {
-            list-style-type: none;
-            padding: 0;
-        }
-        .course-list li {
+            margin-top: 30px;
             background-color: #ffffff;
+            border-radius: 10px;
+            padding: 20px;
             color: #333;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            margin-bottom: 15px;
-            padding: 15px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
-        .course-list h3 {
-            margin-bottom: 10px;
+        .student-card {
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+            padding: 20px;
         }
-        .course-list p {
-            margin: 5px 0;
-        }
-        .btn-view-details {
-            margin-top: 10px;
-            display: inline-block;
+        .student-card h3 {
+            color: #007bff;
         }
     </style>
 </head>
 <body>
-    <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-light">
         <div class="container-fluid">
             <a class="navbar-brand" href='/<%= userType.toLowerCase() %>-homepage'>
@@ -136,63 +120,68 @@
             </div>
         </div>
     </nav>
-
-    <!-- Page Content -->
     <div class="container">
-        <h1 class="text-center text-light mb-4">All Courses</h1>
-
+        <h1 class="text-center">Student Registrations</h1>
+        
         <!-- Search Form -->
-        <form class="search-form" action="/courses" method="GET">
-            <div class="row g-3 align-items-center">
-                <div class="col-md-4">
-                    <label for="criteria" class="form-label">Search by:</label>
-                    <select id="criteria" name="criteria" class="form-select">
+        <form action="/view-student-registrations" method="GET" class="mb-4">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <select name="criteria" class="form-select">
+                        <option value="name" <%= criteria === 'name' ? 'selected' : '' %>>Student Name</option>
+                        <option value="email" <%= criteria === 'email' ? 'selected' : '' %>>Student Email</option>
+                        <option value="course_name" <%= criteria === 'course_name' ? 'selected' : '' %>>Course Name</option>
                         <option value="cid" <%= criteria === 'cid' ? 'selected' : '' %>>Course ID</option>
-                        <option value="name" <%= criteria === 'name' ? 'selected' : '' %>>Course Name</option>
                         <option value="semester" <%= criteria === 'semester' ? 'selected' : '' %>>Semester</option>
-                        <option value="instructor" <%= criteria === 'instructor' ? 'selected' : '' %>>Instructor</option>
                     </select>
                 </div>
-                <div class="col-md-5">
-                    <label for="query" class="form-label">Search Term:</label>
-                    <input
-                        type="text"
-                        name="query"
-                        id="query"
-                        placeholder="Enter your search term"
-                        class="form-control"
-                        value="<%= query %>"
-                        required
+                <div class="col-md-7">
+                    <input 
+                        type="text" 
+                        name="query" 
+                        class="form-control" 
+                        placeholder="Enter search query" 
+                        value="<%= query %>" 
                     />
                 </div>
-                <div class="col-md-3 d-flex gap-2">
-                    <button type="submit" class="btn btn-info flex-grow-1">Search</button>
-                    <a href="/courses" class="btn btn-primary flex-grow-1">Reset</a>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">Search</button>
                 </div>
             </div>
         </form>
 
-        <!-- Course List -->
-        <% if (courses.length > 0) { %>
-            <ul class="course-list">
-                <% courses.forEach(course => { %>
-                    <li>
-                        <h3>
-                            <%= course.name %> (<%= course.cid %>)
-                            - Semester: <%= course.semester %>
-                        </h3>
-                        <p><strong>Credits:</strong> <%= course.credit %></p>
-                        <p><strong>Instructor:</strong> <%= course.instructor %></p>
-                        <a href="/course-details/<%= course.cid %>/<%= course.semester %>" class="btn btn-info btn-view-details">View Details</a>
-                    </li>
-                <% }) %>
-            </ul>
+        <% if (students.length > 0) { %>
+            <% students.forEach(student => { %>
+                <div class="student-card">
+                    <h3><%= student.name %> (ID: <%= student.user_id %>)</h3>
+                    <p><strong>Email:</strong> <%= student.email %></p>
+                    <% if (student.registrations.length > 0) { %>
+                        <h4>Registrations:</h4>
+                        <ul>
+                            <% student.registrations.forEach(registration => { %>
+                                <li>
+                                    <strong>Course:</strong> <%= registration.course_name %> (<%= registration.course_id %>)
+                                    <strong>Semester:</strong> <%= registration.semester %>
+                                    <% if (registration.timetable.length > 0) { %>
+                                        <p><strong>Timetable:</strong></p>
+                                        <ul>
+                                            <% registration.timetable.forEach(slot => { %>
+                                                <li>Day: <%= ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][slot.week_day - 2] %>, Period: <%= slot.class_period %></li>
+                                            <% }) %>
+                                        </ul>
+                                    <% } %>
+                                </li>
+                            <% }) %>
+                        </ul>
+                    <% } else { %>
+                        <p>No registrations found.</p>
+                    <% } %>
+                </div>
+            <% }) %>
         <% } else { %>
-            <p class="text-center text-light">No courses found for your search criteria.</p>
+            <p class="text-center">No students or registrations found.</p>
         <% } %>
     </div>
-
-    <!-- Include Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

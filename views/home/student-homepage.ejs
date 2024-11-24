@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Homepage</title>
+    <!-- Include Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(to right, #6691c8, #2575fc);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .navbar {
+            background-color: #f8f9fa !important; /* Brighter navbar */
+            padding: 0; /* Remove padding for full-height nav items */
+        }
+        .nav-link:hover {
+            background-color: #e0e3e7;
+            transform: scale(1.05);
+        }
+        .welcome {
+            font-size: 1.5rem;
+            margin-top: 20px;
+        }
+        .card-container {
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">Student Portal</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto align-items-stretch">
+                    <li class="nav-item active">
+                        <a class="nav-link" href="/courses">View Courses</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/register-course">Register a Course</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/view-calendar">Timetable</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/cancel-course">Cancel a Course</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/past-courses">History Courses</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/feedback">Feedback a Course</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/view-feedback">View Feedback</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/logout">Logout</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Welcome Section -->
+    <div class="container text-center">
+        <div class="welcome">
+            <h1>Welcome, <%= studentName %>!</h1>
+            <p>Explore your courses and manage your schedule efficiently.</p>
+        </div>
+
+        <!-- Cards for Quick Links -->
+        <div class="row card-container">
+            <div class="col-md-4 mb-3">
+                <div class="card shadow">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">View Courses</h5>
+                        <p class="card-text">See the list of available courses and details.</p>
+                        <a href="/courses" class="btn btn-primary">Go</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card shadow">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Register a Course</h5>
+                        <p class="card-text">Enroll in new courses for the upcoming semester.</p>
+                        <a href="/register-course" class="btn btn-success">Register</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card shadow">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Cancel a Course</h5>
+                        <p class="card-text">Drop a course you are no longer interested in.</p>
+                        <a href="/cancel-course" class="btn btn-danger">Cancel</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card shadow">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">History Courses</h5>
+                        <p class="card-text">View your previously taken courses and grades.</p>
+                        <a href="/past-courses" class="btn btn-warning">View History</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card shadow">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Feedback a Course</h5>
+                        <p class="card-text">Provide feedback for courses you've attended.</p>
+                        <a href="/feedback" class="btn btn-info">Give Feedback</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card shadow">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">View all your Feedbacks</h5>
+                        <p class="card-text">See the feedbacks you have submitted.</p>
+                        <a href="/view-feedback" class="btn btn-info">View Feedback</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include Bootstrap JS (Optional for advanced components) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
