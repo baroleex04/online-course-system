@@ -1029,6 +1029,7 @@ app.get('/view-student-registrations', authorizeRole(['Admin', 'Faculty', 'Staff
     });
 });
 
+
 //GET :/edit-course/:cid/:semester
 app.get('/edit-course/:cid/:semester', authorizeRole(['Admin', 'Faculty', 'Staff']), (req, res) => {
     const { cid, semester } = req.params;
@@ -1154,7 +1155,7 @@ app.get('/courses', authorizeRole(['Student', 'Faculty', 'Admin', 'Staff']), (re
     const userType = req.session.user_type; // Retrieve the user role from the session
     const { query, criteria } = req.query; // Capture search query and selected criteria
 
-    const validCriteria = ['cid', 'name', 'semester', 'instructor']; // Allowable criteria
+    const validCriteria = ['cid', 'name', 'semester', 'instructor', 'all']; // Include 'all' as valid criteria
     const selectedCriteria = validCriteria.includes(criteria) ? criteria : 'cid'; // Default to 'cid'
 
     const baseQuery = `
@@ -1162,17 +1163,19 @@ app.get('/courses', authorizeRole(['Student', 'Faculty', 'Admin', 'Staff']), (re
         FROM Course c
     `;
 
-    const searchCondition = `
-        WHERE c.${selectedCriteria} LIKE ?
-    `;
+    let finalQuery;
+    let queryParams = [];
 
-    const orderBy = `ORDER BY c.cid, c.semester`;
-
-    const finalQuery = query
-        ? `${baseQuery} ${searchCondition} ${orderBy}`
-        : `${baseQuery} ${orderBy}`;
-
-    const queryParams = query ? [`%${query}%`] : [];
+    if (selectedCriteria === 'all') {
+        // Ignore searchCondition if 'all' is selected
+        finalQuery = `${baseQuery} ORDER BY c.cid, c.semester`;
+    } else {
+        const searchCondition = `WHERE c.${selectedCriteria} LIKE ?`;
+        finalQuery = query
+            ? `${baseQuery} ${searchCondition} ORDER BY c.cid, c.semester`
+            : `${baseQuery} ORDER BY c.cid, c.semester`;
+        queryParams = query ? [`%${query}%`] : [];
+    }
 
     connection.query(finalQuery, queryParams, (err, results) => {
         if (err) {
@@ -1189,6 +1192,7 @@ app.get('/courses', authorizeRole(['Student', 'Faculty', 'Admin', 'Staff']), (re
         });
     });
 });
+
 
 
 //GET :/course-details/:cid/:semester

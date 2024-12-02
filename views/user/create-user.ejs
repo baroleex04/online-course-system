@@ -48,70 +48,6 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto align-items-stretch">
-                    <% if (userType === 'Student') { %>
-                        <!-- Student-specific Nav Items -->
-                        <li class="nav-item">
-                            <a class="nav-link" href="/courses">View Courses</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/register-course">Register a Course</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/view-calendar">Timetable</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/cancel-course">Cancel a Course</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/past-courses">History Courses</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/feedback">Feedback a Course</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/view-feedback">View Feedback</a>
-                        </li>
-                    <% } else if (userType === 'Faculty' || userType === 'Staff') { %>
-                        <!-- Faculty-specific Nav Items -->
-                        <li class="nav-item">
-                            <a class="nav-link" href="/courses">View Courses</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/add-course">Add Course</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/view-student-registrations">View Student Registrations</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/view-feedback">View Feedback</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/edit-course">Edit Course</a>
-                        </li>
-                    <% } %>
-                    <% if (userType === 'Admin') { %>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/courses">View Courses</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/add-course">Add Course</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/list-courses">Edit Courses</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/view-student-registrations">View Student Registrations</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/view-feedback">View Feedback</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/create-user">Create Users</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/delete-user">Delete Users</a>
-                        </li>
-                    <% } %>
                     <li class="nav-item">
                         <a class="nav-link" href="/logout">Logout</a>
                     </li>
@@ -148,30 +84,6 @@
                             <div class="mb-3">
                                 <label for="password" class="form-label">Password</label>
                                 <input type="password" id="password" name="password" class="form-control" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="email" class="form-label">Email</label>
-                                <input type="email" id="email" name="email" class="form-control" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="pnumber" class="form-label">Phone Number</label>
-                                <input type="number" id="pnumber" name="pnumber" class="form-control" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="nationality" class="form-label">Nationality</label>
-                                <input type="text" id="nationality" name="nationality" class="form-control" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="fname" class="form-label">First Name</label>
-                                <input type="text" id="fname" name="fname" class="form-control" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="mname" class="form-label">Middle Name</label>
-                                <input type="text" id="mname" name="mname" class="form-control">
-                            </div>
-                            <div class="mb-3">
-                                <label for="lname" class="form-label">Last Name</label>
-                                <input type="text" id="lname" name="lname" class="form-control" required>
                             </div>
                             <div class="mb-3">
                                 <label for="user_type" class="form-label">User Type</label>
