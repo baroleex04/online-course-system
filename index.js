@@ -6,6 +6,8 @@ const authorizeRole = require('./middleware/authorizeRole');
 const logActivity = require('./middleware/logActivity');
 const updateHistoryCourses = require('./modules/updateHistoryCourses'); // Adjust path as needed
 const connection = require('./db/database'); // Your database connection
+const { connect } = require('http2');
+const { time } = require('console');
 const app = express();
 
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -667,136 +669,439 @@ app.post('/create-user', authorizeRole(['Admin']), (req, res) => {
     logActivity(userId, `Created new user: ${user_id}`);
 });
 
+function extractTimetableObject(data) {
+    for (let i = 0; i < data.length; i++) {
+        // Check if the element is a string and appears to be valid JSON
+        if (typeof data[i] === 'string') {
+            try {
+                // Try parsing the string to check if it's valid JSON
+                const parsedObject = JSON.parse(data[i]);
+                return parsedObject;  // Return the parsed object if valid
+            } catch (error) {
+                // If parsing fails, continue to the next element
+                continue;
+            }
+        }
+    }
+    return null;  // Return null if no valid JSON string was found
+}
+
 // GET :/add-course
 app.get('/add-course', authorizeRole(['Admin', 'Staff', 'Faculty']), (req, res) => {
     const userType = req.session.user_type; // Retrieve the user role from the session
     res.render('course/add-course', {
         userType,
         successMessage: null,
-        errorMessage: null,}); // Renders the add-course.ejs form
+        errorMessage: null, // No messages initially
+    }); // Renders the add-course.ejs form
 });
 
-// POST :/add-course
+// POST: /add-course
 app.post('/add-course', authorizeRole(['Admin', 'Staff', 'Faculty']), (req, res) => {
-    const userType = req.session.user_type;
-    const { cid, semester, name, credit, instructor, week_day, class_period } = req.body;
+    const { cid, semester, name, credit, instructor, timetable } = req.body;
+    
+    // Step 1: Extract and clean timetable data (assumed to be a custom function)
+    const timetableJSON = extractTimetableObject(timetable);
+    console.log('Raw Timetable Data:', timetableJSON);
 
-    // Insert course details into the Course table
-    const courseQuery = `
+    // Ensure timetable is in correct object format (should be an object already)
+    if (typeof timetableJSON !== 'object' || Array.isArray(timetableJSON)) {
+        return res.status(400).send('Invalid timetable format.');
+    }
+
+    // Step 2: Process timetable and check if it has valid data
+    const timetableEntries = [];
+    for (let day in timetableJSON) {
+        for (let period in timetableJSON[day]) {
+            timetableEntries.push([
+                cid, 
+                semester, 
+                parseInt(day),  // Days are 0-indexed, so we convert to 1-indexed (e.g., Monday -> 1)
+                parseInt(period)     // Ensure period is a number
+            ]);
+        }
+    }
+
+    // Check if timetable entries were generated
+    if (timetableEntries.length === 0) {
+        return res.status(400).send('No timetable data provided.');
+    }
+
+    // Step 3: Insert the course into the 'Course' table
+    const insertCourseQuery = `
         INSERT INTO Course (cid, semester, name, credit, instructor)
         VALUES (?, ?, ?, ?, ?)
     `;
 
-    connection.query(courseQuery, [cid, semester, name, credit, instructor], (err) => {
+    connection.query(insertCourseQuery, [cid, semester, name, credit, instructor], (err, result) => {
         if (err) {
-            console.error('Error adding course:', err);
-            res.status(500).send('Error adding course. Please try again later.');
-            return;
+            console.error('Error inserting course:', err);
+            return res.status(500).send('Error inserting course.');
         }
 
-        // Combine week_day and class_period arrays into rows
-        const timetableEntries = [];
-        if (Array.isArray(week_day) && Array.isArray(class_period)) {
-            for (let i = 0; i < week_day.length; i++) {
-                timetableEntries.push([cid, semester, week_day[i], class_period[i]]);
-            }
-        }
+        console.log('Course inserted successfully');
 
-        // Remove duplicate entries from the array
-        const uniqueEntries = Array.from(new Set(timetableEntries.map(JSON.stringify))).map(JSON.parse);
+        // Step 4: Insert timetable data into the 'Timetable' table
+        const insertTimetableQuery = 'INSERT INTO Timetable (course_cid, semester, week_day, class_period) VALUES ?';
 
-        // Insert unique timetable rows
-        const timetableQuery = `
-            INSERT INTO Timetable (course_cid, semester, week_day, class_period)
-            VALUES ?
-        `;
-
-        connection.query(timetableQuery, [uniqueEntries], (err) => {
+        // Insert timetable data into the database (using batch insert for efficiency)
+        connection.query(insertTimetableQuery, [timetableEntries], (err, result) => {
             if (err) {
-                console.error('Error adding timetable entries:', err);
-                res.status(500).send('Course added, but timetable entries failed.');
-                return;
+                console.error('Error inserting timetable:', err);
+                return res.status(500).send('Error inserting timetable.');
             }
-
+            console.log('Timetable inserted successfully');
             res.render('course/add-course', {
-                userType,
-                successMessage: 'Course and timetable added successfully!',
-                errorMessage: null,
-            });
+                userType: req.session.user_type,
+                successMessage: "Successfully add a new course!",
+                errorMessage: null, // No messages initially
+            }); // Renders the add-course.ejs form
         });
     });
-    // Log the activity
-    const userId = req.session.user_id;
-    logActivity(userId, `Added course: ${cid} for semester ${semester}`);
 });
+
 
 //POST :/delete-course
-app.post('/delete-course', authorizeRole(['Admin', 'Faculty', 'Staff']), (req, res) => {
-    const { cid, semester } = req.body;
+// Delete a course and all related timetable and registration entries
+app.post('/delete-course/:cid/:semester', authorizeRole(['Admin', 'Staff', 'Faculty']), (req, res) => {
+    const { cid, semester } = req.params;
 
-    // Delete related rows in the Registration table
-    const deleteRegistrationQuery = `
-        DELETE FROM Registration
-        WHERE course_cid = ? AND semester = ?
-    `;
-
-    connection.query(deleteRegistrationQuery, [cid, semester], (err) => {
+    // Step 1: Delete related timetable entries
+    const deleteTimetableQuery = 'DELETE FROM Timetable WHERE course_cid = ? AND semester = ?';
+    connection.query(deleteTimetableQuery, [cid, semester], (err, result) => {
         if (err) {
-            console.error('Error deleting from registration:', err);
-            res.status(500).send('Error deleting related records. Please try again later.');
-            return;
+            console.error('Error deleting timetable entries:', err);
+            return res.status(500).send('Error deleting timetable entries.');
         }
 
-        // Delete related rows in the Timetable table
-        const deleteTimetableQuery = `
-            DELETE FROM Timetable
-            WHERE course_cid = ? AND semester = ?
-        `;
-
-        connection.query(deleteTimetableQuery, [cid, semester], (err) => {
+        // Step 2: Delete related registration entries
+        const deleteRegistrationQuery = 'DELETE FROM Registration WHERE course_cid = ? AND semester = ?';
+        connection.query(deleteRegistrationQuery, [cid, semester], (err, result) => {
             if (err) {
-                console.error('Error deleting from timetable:', err);
-                res.status(500).send('Error deleting related records. Please try again later.');
-                return;
+                console.error('Error deleting registration entries:', err);
+                return res.status(500).send('Error deleting registration entries.');
             }
 
-            // Delete related rows in the History_courses table
-            const deleteHistoryQuery = `
-                DELETE FROM History_courses
-                WHERE course_cid = ? AND semester = ?
-            `;
-
-            connection.query(deleteHistoryQuery, [cid, semester], (err) => {
+            // Step 3: Delete the course itself
+            const deleteCourseQuery = 'DELETE FROM Course WHERE cid = ? AND semester = ?';
+            connection.query(deleteCourseQuery, [cid, semester], (err, result) => {
                 if (err) {
-                    console.error('Error deleting from history_courses:', err);
-                    res.status(500).send('Error deleting related records. Please try again later.');
-                    return;
+                    console.error('Error deleting course:', err);
+                    return res.status(500).send('Error deleting course.');
                 }
 
-                // Delete the course itself
-                const deleteCourseQuery = `
-                    DELETE FROM Course
-                    WHERE cid = ? AND semester = ?
-                `;
-
-                connection.query(deleteCourseQuery, [cid, semester], (err) => {
-                    if (err) {
-                        console.error('Error deleting course:', err);
-                        res.status(500).send('Error deleting course. Please try again later.');
-                        return;
-                    }
-
-                    // Log the activity
-                    const userId = req.session.user_id;
-                    logActivity(userId, `Deleted course: ${cid} for semester ${semester}`);
-
-                    // Redirect back to the list of courses
-                    res.redirect('/list-courses');
-                });
+                // All deletions successful, redirect to course list
+                res.redirect('/courses');
             });
         });
     });
 });
+
+app.post('/delete-courses', authorizeRole(['Admin']), async (req, res) => {
+    const selectedCourses = req.body.selectedCourses;  // Array of course IDs
+
+    if (selectedCourses && selectedCourses.length > 0) {
+        try {
+            // Step 1: Delete related registrations
+            const deleteRegistrationsQuery = `DELETE FROM registration WHERE course_cid IN (?)`;
+            await new Promise((resolve, reject) => {
+                connection.query(deleteRegistrationsQuery, [selectedCourses], (err, result) => {
+                    if (err) {
+                        console.error('Error deleting registrations:', err);
+                        return reject(err);  // Reject if there is an error
+                    }
+                    resolve(result);
+                });
+            });
+
+            // Step 2: Delete related timetable entries
+            const deleteTimetableQuery = `DELETE FROM timetable WHERE course_cid IN (?)`;
+            await new Promise((resolve, reject) => {
+                connection.query(deleteTimetableQuery, [selectedCourses], (err, result) => {
+                    if (err) {
+                        console.error('Error deleting timetable:', err);
+                        return reject(err);
+                    }
+                    resolve(result);
+                });
+            });
+
+            // Step 3: Delete the courses
+            const deleteCoursesQuery = `DELETE FROM Course WHERE cid IN (?)`;
+            await new Promise((resolve, reject) => {
+                connection.query(deleteCoursesQuery, [selectedCourses], (err, result) => {
+                    if (err) {
+                        console.error('Error deleting courses:', err);
+                        return reject(err);
+                    }
+                    resolve(result);
+                });
+            });
+
+            // After all deletions are successful, redirect
+            res.redirect('/courses'); // Redirect back to the courses list
+
+        } catch (error) {
+            console.error('Error during delete process:', error);
+            res.status(500).send('Error deleting courses.');
+        }
+    } else {
+        res.status(400).send('No courses selected');
+    }
+});
+
+app.get('/users', authorizeRole(['Admin']), (req, res) => {
+    const userType = req.session.user_type; // Retrieve the user role from the session
+    const { query, criteria } = req.query; // Capture search query and selected criteria
+
+    const validCriteria = ['user_id', 'username', 'fname', 'lname', 'email', 'user_type', 'all']; // Include 'all' as valid criteria
+    const selectedCriteria = validCriteria.includes(criteria) ? criteria : 'username'; // Default to 'username'
+
+    const baseQuery = `
+        SELECT u.user_id, u.username, u.fname, u.lname, u.email, u.user_type
+        FROM Users u
+    `;
+
+    let finalQuery;
+    let queryParams = [];
+
+    if (selectedCriteria === 'all') {
+        // Ignore searchCondition if 'all' is selected
+        finalQuery = `${baseQuery} ORDER BY u.user_id`;
+    } else {
+        const searchCondition = `WHERE u.${selectedCriteria} LIKE ?`;
+        finalQuery = query
+            ? `${baseQuery} ${searchCondition} ORDER BY u.user_id`
+            : `${baseQuery} ORDER BY u.user_id`;
+        queryParams = query ? [`%${query}%`] : [];
+    }
+
+    connection.query(finalQuery, queryParams, (err, results) => {
+        if (err) {
+            console.error('Error fetching users:', err);
+            res.status(500).send('Error fetching users.');
+            return;
+        }
+
+        res.render('user/list-users', {
+            users: results,
+            query: query || '',
+            criteria: criteria || 'username',
+            userType, // Pass the role to the EJS template
+        });
+    });
+});
+
+// View details of a single user
+app.get('/user-details/:user_id', authorizeRole(['Admin']), (req, res) => {
+    const userId = req.params.user_id;
+
+    const getUserQuery = `
+        SELECT * FROM Users WHERE user_id = ?
+    `;
+
+    connection.query(getUserQuery, [userId], (err, userResults) => {
+        if (err) {
+            console.error('Error fetching user details:', err);
+            return res.status(500).send('Error fetching user details');
+        }
+        const user = userResults[0];
+        let extraInfoQuery = '';
+        let extraInfo = {};
+
+        if (user.user_type === 'Student') {
+            extraInfoQuery = `SELECT * FROM Student WHERE user_id = ?`;
+        } else if (user.user_type === 'Staff') {
+            extraInfoQuery = `SELECT * FROM Staff WHERE user_id = ?`;
+        } else if (user.user_type === 'Faculty') {
+            extraInfoQuery = `SELECT * FROM Faculty WHERE user_id = ?`;
+        }
+
+        if (extraInfoQuery) {
+            connection.query(extraInfoQuery, [userId], (err, extraInfoResults) => {
+                if (err) {
+                    console.error('Error fetching extra user info:', err);
+                    return res.status(500).send('Error fetching additional user info');
+                }
+
+                extraInfo = extraInfoResults[0] || {};
+                res.render('user/user-details', { user, extraInfo, userType: req.session.user_type });
+            });
+        } else {
+            res.render('user/user-details', { user, extraInfo, userType: req.session.user_type });
+        }
+    });
+});
+
+// GET Route to display the user edit form
+app.get('/edit-user/:user_id', authorizeRole(['Admin']), (req, res) => {
+    const { user_id } = req.params;
+
+    // Fetch basic user information
+    const userQuery = 'SELECT * FROM Users WHERE user_id = ?';
+    connection.query(userQuery, [user_id], (err, userResults) => {
+        if (err || userResults.length === 0) {
+            console.error('Error fetching user data:', err);
+            return res.status(404).send('User not found');
+        }
+
+        const user = userResults[0];
+        let extraInfoQuery = '';
+        let extraInfo = {};
+
+        // Based on the user type, fetch additional information
+        if (user.user_type === 'Student') {
+            extraInfoQuery = 'SELECT * FROM Student WHERE user_id = ?';
+        } else if (user.user_type === 'Staff') {
+            extraInfoQuery = 'SELECT * FROM Staff WHERE user_id = ?';
+        } else if (user.user_type === 'Faculty') {
+            extraInfoQuery = 'SELECT * FROM Faculty WHERE user_id = ?';
+        }
+
+        // Fetch additional info if required
+        if (extraInfoQuery) {
+            connection.query(extraInfoQuery, [user_id], (err, extraInfoResults) => {
+                if (err) {
+                    console.error('Error fetching additional user info:', err);
+                    return res.status(500).send('Error fetching additional user info');
+                }
+
+                extraInfo = extraInfoResults[0] || {};
+                res.render('user/edit-user', { user, extraInfo, message: null });
+            });
+        } else {
+            res.render('user/edit-user', { user, extraInfo, message: null });
+        }
+    });
+});
+
+// POST Route to update the user details
+app.post('/edit-user/:user_id', authorizeRole(['Admin']), (req, res) => {
+    const { user_id } = req.params;
+    const { username, fname, mname, lname, nationality, email, enroll_year, study_status, position, department } = req.body;
+
+    const userQuery = 'SELECT * FROM Users WHERE user_id = ?';
+
+    connection.query(userQuery, [user_id], (err, userResults) => {
+        if (err || userResults.length === 0) {
+            console.error('Error fetching user data:', err);
+            return res.status(404).send('User not found');
+        }
+
+        const user = userResults[0]; // Get the user object
+
+        const user_type = user.user_type;
+
+        let extraInfoQuery = '';
+        let extraInfoValues = [];
+        
+        // Adjust the update query based on the user type
+        let updateQuery = `
+            UPDATE Users 
+            SET username = ?, fname = ?, mname = ?, lname = ?, nationality = ?, email = ?, user_type = ? 
+            WHERE user_id = ?
+        `;
+
+        let queryValues = [username, fname, mname, lname, nationality, email, user_type, user_id];
+
+        if (user_type === 'Student') {
+            // Add extra information for students
+            extraInfoQuery = `UPDATE Student SET enroll_year = ?, study_status = ? WHERE user_id = ?`;
+            extraInfoValues = [enroll_year, study_status, user_id];
+        } else if (user_type === 'Staff') {
+            // Add extra information for staff
+            extraInfoQuery = `UPDATE Staff SET position = ? WHERE user_id = ?`;
+            extraInfoValues = [position, user_id];
+        } else if (user_type === 'Faculty') {
+            // Add extra information for faculty
+            extraInfoQuery = `UPDATE Faculty SET department = ? WHERE user_id = ?`;
+            extraInfoValues = [department, user_id];
+        }
+
+        connection.beginTransaction(err => {
+            if (err) {
+                console.error('Transaction start error:', err);
+                return res.status(500).send('Error starting transaction');
+            }
+
+            // Update user data
+            connection.query(updateQuery, queryValues, (err, result) => {
+                if (err) {
+                    return connection.rollback(() => {
+                        console.error('Error updating user:', err);
+                        res.status(500).send('Error updating user data');
+                    });
+                }
+
+                // Update extra info based on user type
+                if (extraInfoQuery) {
+                    connection.query(extraInfoQuery, extraInfoValues, (err, result) => {
+                        if (err) {
+                            return connection.rollback(() => {
+                                console.error('Error updating extra info:', err);
+                                res.status(500).send('Error updating extra information');
+                            });
+                        }
+
+                        // Commit transaction if everything went well
+                        connection.commit(err => {
+                            if (err) {
+                                return connection.rollback(() => {
+                                    console.error('Error committing transaction:', err);
+                                    res.status(500).send('Error committing transaction');
+                                });
+                            }
+
+                            // Send success message to the frontend instead of redirecting
+                            res.render('user/edit-user', {
+                                user: user,
+                                extraInfo: req.body,
+                                message: 'User updated successfully!' // Passing success message
+                            });
+                        });
+                    });
+                } else {
+                    // If no extra info to update, just commit the user data update
+                    connection.commit(err => {
+                        if (err) {
+                            return connection.rollback(() => {
+                                console.error('Error committing transaction:', err);
+                                res.status(500).send('Error committing transaction');
+                            });
+                        }
+
+                        // Send success message to the frontend instead of redirecting
+                        res.render('user/edit-user', {
+                            user: user,
+                            extraInfo: req.body,
+                            message: 'User updated successfully!' // Passing success message
+                        });
+                    });
+                }
+            });
+        });
+    });
+});
+
+// Delete a user (admin only)
+app.post('/delete-user', authorizeRole(['Admin']), (req, res) => {
+    const { user_id } = req.body;
+
+    const deleteUserQuery = `
+        DELETE FROM Users
+        WHERE user_id = ?
+    `;
+
+    connection.query(deleteUserQuery, [user_id], (err) => {
+        if (err) {
+            console.error('Error deleting user:', err);
+            return res.status(500).send('Error deleting user');
+        }
+
+        res.redirect('/users'); // Redirect back to the user list page
+    });
+});
+
 
 // GET :/delete-user
 app.get('/delete-user', authorizeRole(['Admin']), (req, res) => {
@@ -1071,63 +1376,74 @@ app.get('/edit-course/:cid/:semester', authorizeRole(['Admin', 'Faculty', 'Staff
 });
 
 //POST :/edit-course/:cid/:semester
-app.post('/edit-course/:cid/:semester', authorizeRole(['Admin', 'Faculty', 'Staff']), (req, res) => {
-    const { cid, semester } = req.params;
-    const { name, credit, instructor, week_day, class_period } = req.body;
+// Assuming your database is set up with mysql2 or a similar module
+app.post('/edit-course/:cid/:semester', (req, res) => {
+    const { cid, semester } = req.params;  // Get course id and semester from the URL
+    const { instructor, timetable } = req.body;  // Get course data from the form submission
+    const timetableJSON = extractTimetableObject(timetable);
+    console.log('Raw Timetable Data:', timetableJSON);
 
+    // Ensure timetable is in correct object format (should be an object already)
+    if (typeof timetableJSON !== 'object' || Array.isArray(timetableJSON)) {
+        return res.status(400).send('Invalid timetable format.');
+    }
+
+    // Step 2: Process timetable and check if it has valid data
+    const timetableEntries = [];
+    for (let day in timetableJSON) {
+        for (let period in timetableJSON[day]) {
+            timetableEntries.push([
+                cid, 
+                semester, 
+                parseInt(day),  // Days are 0-indexed, so we convert to 1-indexed (e.g., Monday -> 1)
+                parseInt(period)     // Ensure period is a number
+            ]);
+        }
+    }
+
+    // Step 2: Update the course information
     const updateCourseQuery = `
         UPDATE Course
-        SET name = ?, credit = ?, instructor = ?
+        SET instructor = ?
         WHERE cid = ? AND semester = ?
     `;
-
-    connection.query(updateCourseQuery, [name, credit, instructor, cid, semester], (err) => {
+    connection.query(updateCourseQuery, [instructor, cid, semester], (err, result) => {
         if (err) {
-            console.error('Error updating course details:', err);
-            res.status(500).send('Error updating course details.');
-            return;
+            console.error('Error updating course:', err);
+            return res.status(500).send('Error updating course.');
         }
 
-        // Delete existing timetable entries
+        // Step 3: Delete old timetable entries for this course
         const deleteTimetableQuery = `
-            DELETE FROM Timetable
-            WHERE course_cid = ? AND semester = ?
+            DELETE FROM Timetable WHERE course_cid = ? AND semester = ?
         `;
-
-        connection.query(deleteTimetableQuery, [cid, semester], (err) => {
+        connection.query(deleteTimetableQuery, [cid, semester], (err, result) => {
             if (err) {
-                console.error('Error clearing timetable entries:', err);
-                res.status(500).send('Error clearing timetable entries.');
-                return;
+                console.error('Error deleting old timetable entries:', err);
+                return res.status(500).send('Error deleting old timetable entries.');
             }
 
-            // Insert new timetable entries
-            const timetableEntries = [];
-            if (Array.isArray(week_day) && Array.isArray(class_period)) {
-                for (let i = 0; i < week_day.length; i++) {
-                    timetableEntries.push([cid, semester, week_day[i], class_period[i]]);
-                }
+            // Step 4: Insert the new timetable entries
+
+            if (timetableEntries.length > 0) {
+                const insertTimetableQuery = `
+                    INSERT INTO Timetable (course_cid, semester, week_day, class_period) 
+                    VALUES ?
+                `;
+                connection.query(insertTimetableQuery, [timetableEntries], (err, result) => {
+                    if (err) {
+                        console.error('Error inserting new timetable entries:', err);
+                        return res.status(500).send('Error inserting new timetable entries.');
+                    }
+
+                    // Step 5: Redirect back to the course list or course details page with success
+                    res.redirect('/courses');
+                });
+            } else {
+                res.status(400).send('No valid timetable data provided.');
             }
-
-            const insertTimetableQuery = `
-                INSERT INTO Timetable (course_cid, semester, week_day, class_period)
-                VALUES ?
-            `;
-
-            connection.query(insertTimetableQuery, [timetableEntries], (err) => {
-                if (err) {
-                    console.error('Error updating timetable entries:', err);
-                    res.status(500).send('Error updating timetable entries.');
-                    return;
-                }
-
-                res.redirect('/list-courses');
-            });
         });
     });
-    // Log the activity
-    const userId = req.session.user_id;
-    logActivity(userId, `Edited course: ${cid} for semester ${semester}`);
 });
 
 // GET :/list-courses
@@ -1198,6 +1514,7 @@ app.get('/courses', authorizeRole(['Student', 'Faculty', 'Admin', 'Staff']), (re
 //GET :/course-details/:cid/:semester
 app.get('/course-details/:cid/:semester', (req, res) => {
     const { cid, semester } = req.params;
+    const userType = req.session.user_type;
 
     const query = `
         SELECT c.cid, c.name, c.credit, c.semester, c.instructor, 
@@ -1232,7 +1549,7 @@ app.get('/course-details/:cid/:semester', (req, res) => {
             })),
         };
 
-        res.render('course/course-details', { course });
+        res.render('course/course-details', { course, userType });
     });
 });
 

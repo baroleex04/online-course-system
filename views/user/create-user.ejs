@@ -13,54 +13,17 @@
             document.getElementById('faculty-fields').style.display = userType === 'Faculty' ? 'block' : 'none';
         }
     </script>
-    <style>
-        body {
-            background: linear-gradient(to right, #5d7dd0, #2575fc);
-            color: #fff;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-        .navbar {
-            background-color: #f8f9fa !important; /* Brighter navbar */
-            padding: 0; /* Remove padding for full-height nav items */
-        }
-        .nav-link:hover {
-            background-color: #e0e3e7;
-            transform: scale(1.05);
-        }
-        .welcome {
-            font-size: 1.5rem;
-            margin-top: 20px;
-        }
-        .card-container {
-            margin-top: 30px;
-        }
-    </style>
+    <%- include('../partials/style'); %>
 </head>
 <body class="bg-light">
     <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-light">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="/admin-homepage">Admin Portal</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto align-items-stretch">
-                    <li class="nav-item">
-                        <a class="nav-link" href="/logout">Logout</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+    <%- include('../partials/nav-admin'); %>
     <div class="container my-5">
         <div class="row justify-content-center">
             <div class="col-md-8">
                 <div class="card shadow">
                     <div class="card-body">
-                        <h1 class="text-center text-primary mb-4">Create User</h1>
+                        <h1 class="text-center text-dark mb-4">Create User</h1>
                         <% if (successMessage) { %>
                             <div class="alert alert-success notification" role="alert">
                                 <%= successMessage %>
@@ -73,62 +36,88 @@
                         <% } %>
                         <form action="/create-user" method="POST">
                             <!-- General Fields -->
-                            <div class="mb-3">
-                                <label for="user_id" class="form-label">User ID</label>
-                                <input type="text" id="user_id" name="user_id" class="form-control" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="username" class="form-label">Username</label>
-                                <input type="text" id="username" name="username" class="form-control" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="password" class="form-label">Password</label>
-                                <input type="password" id="password" name="password" class="form-control" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="user_type" class="form-label">User Type</label>
-                                <select id="user_type" name="user_type" class="form-select" onchange="handleUserTypeChange()" required>
-                                    <option value="">Select User Type</option>
-                                    <option value="Student">Student</option>
-                                    <option value="Staff">Staff</option>
-                                    <option value="Faculty">Faculty</option>
-                                    <option value="Admin">Admin</option>
-                                </select>
-                            </div>
-
-                            <!-- Student Fields -->
-                            <div id="student-fields" class="border p-3 rounded bg-light mb-3" style="display: none;">
-                                <h4 class="text-secondary">Student Details</h4>
+                            <form action="/create-user" method="POST">
+                                <!-- General Fields -->
                                 <div class="mb-3">
-                                    <label for="enroll_year" class="form-label">Enrollment Year</label>
-                                    <input type="number" id="enroll_year" name="enroll_year" class="form-control">
+                                    <label for="user_id" class="form-label">User ID</label>
+                                    <input type="text" id="user_id" name="user_id" class="form-control" required>
                                 </div>
                                 <div class="mb-3">
-                                    <label for="study_status" class="form-label">Study Status</label>
-                                    <input type="text" id="study_status" name="study_status" class="form-control">
+                                    <label for="username" class="form-label">Username</label>
+                                    <input type="text" id="username" name="username" class="form-control" required>
                                 </div>
-                            </div>
-
-                            <!-- Staff Fields -->
-                            <div id="staff-fields" class="border p-3 rounded bg-light mb-3" style="display: none;">
-                                <h4 class="text-secondary">Staff Details</h4>
                                 <div class="mb-3">
-                                    <label for="position" class="form-label">Position</label>
-                                    <input type="text" id="position" name="position" class="form-control">
+                                    <label for="password" class="form-label">Password</label>
+                                    <input type="password" id="password" name="password" class="form-control" required>
                                 </div>
-                            </div>
-
-                            <!-- Faculty Fields -->
-                            <div id="faculty-fields" class="border p-3 rounded bg-light mb-3" style="display: none;">
-                                <h4 class="text-secondary">Faculty Details</h4>
                                 <div class="mb-3">
-                                    <label for="department" class="form-label">Department</label>
-                                    <input type="text" id="department" name="department" class="form-control">
+                                    <label for="email" class="form-label">Email</label>
+                                    <input type="email" id="email" name="email" class="form-control" required>
                                 </div>
-                            </div>
+                                <div class="mb-3">
+                                    <label for="pnumber" class="form-label">Phone Number</label>
+                                    <input type="number" id="pnumber" name="pnumber" class="form-control" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="nationality" class="form-label">Nationality</label>
+                                    <input type="text" id="nationality" name="nationality" class="form-control" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="fname" class="form-label">First Name</label>
+                                    <input type="text" id="fname" name="fname" class="form-control" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="mname" class="form-label">Middle Name</label>
+                                    <input type="text" id="mname" name="mname" class="form-control">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="lname" class="form-label">Last Name</label>
+                                    <input type="text" id="lname" name="lname" class="form-control" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="user_type" class="form-label">User Type</label>
+                                    <select id="user_type" name="user_type" class="form-select" onchange="handleUserTypeChange()" required>
+                                        <option value="">Select User Type</option>
+                                        <option value="Student">Student</option>
+                                        <option value="Staff">Staff</option>
+                                        <option value="Faculty">Faculty</option>
+                                        <option value="Admin">Admin</option>
+                                    </select>
+                                </div>
+    
+                                <!-- Student Fields -->
+                                <div id="student-fields" class="border p-3 rounded bg-light mb-3" style="display: none;">
+                                    <h4 class="text-secondary">Student Details</h4>
+                                    <div class="mb-3">
+                                        <label for="enroll_year" class="form-label">Enrollment Year</label>
+                                        <input type="number" id="enroll_year" name="enroll_year" class="form-control">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="study_status" class="form-label">Study Status</label>
+                                        <input type="text" id="study_status" name="study_status" class="form-control">
+                                    </div>
+                                </div>
+    
+                                <!-- Staff Fields -->
+                                <div id="staff-fields" class="border p-3 rounded bg-light mb-3" style="display: none;">
+                                    <h4 class="text-secondary">Staff Details</h4>
+                                    <div class="mb-3">
+                                        <label for="position" class="form-label">Position</label>
+                                        <input type="text" id="position" name="position" class="form-control">
+                                    </div>
+                                </div>
+    
+                                <!-- Faculty Fields -->
+                                <div id="faculty-fields" class="border p-3 rounded bg-light mb-3" style="display: none;">
+                                    <h4 class="text-secondary">Faculty Details</h4>
+                                    <div class="mb-3">
+                                        <label for="department" class="form-label">Department</label>
+                                        <input type="text" id="department" name="department" class="form-control">
+                                    </div>
+                                </div>    
 
                             <!-- Submit Button -->
-                            <button type="submit" class="btn btn-primary w-100">Create User</button>
+                            <button type="submit" class="btn btn-outline-secondary w-100">Create User</button>
                         </form>
                     </div>
                 </div>
