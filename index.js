@@ -1,6 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const session = require('express-session');
+const path = require('path');
 const authorizeRole = require('./middleware/authorizeRole');
 const logActivity = require('./middleware/logActivity');
 const updateHistoryCourses = require('./modules/updateHistoryCourses'); // Adjust path as needed
@@ -16,6 +17,7 @@ app.use(
         saveUninitialized: true,
     })
 );
+app.use(express.static(path.join(__dirname, 'public')));
 app.set('view engine', 'ejs');
 app.set('views', './views');
 

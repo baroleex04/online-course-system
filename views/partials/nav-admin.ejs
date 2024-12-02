@@ -1,0 +1,56 @@
+<nav class="sidebar">
+    <div class="p-3">
+        <a href="/admin-homepage" class="d-flex align-items-center pb-3 mb-3 link-dark text-decoration-none border-bottom">
+            <span class="text-center nav-link">Admin Portal</span>
+        </a>
+    </div>
+    <ul class="nav flex-column">
+        <li class="nav-item">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="collapse" href="#manageCoursesDropdown" role="button" aria-expanded="true" aria-controls="manageUsersDropdown">
+                Course
+            </a>
+            <div class="show collapse" id="manageCoursesDropdown">
+                <ul class="list-unstyled ps-3">
+                    <li><a class="nav-link" href="/create-user">View courses</a></li>
+                    <li><a class="nav-link" href="/create-user">Create a course</a></li>
+                    <li><a class="nav-link" href="/delete-user">Edit/Delete a course</a></li>
+                </ul>
+            </div>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="collapse" href="#manageUsersDropdown" role="button" aria-expanded="true" aria-controls="manageUsersDropdown">
+                Accounts
+            </a>
+            <div class="show collapse" id="manageUsersDropdown">
+                <ul class="list-unstyled ps-3">
+                    <li><a class="nav-link" href="/create-user">Create Accounts</a></li>
+                    <li><a class="nav-link" href="/delete-user">Delete Accounts</a></li>
+                </ul>
+            </div>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="collapse" href="#manageRegistrationDropdown" role="button" aria-expanded="true" aria-controls="manageUsersDropdown">
+                Registration
+            </a>
+            <div class="show collapse" id="manageRegistrationDropdown">
+                <ul class="list-unstyled ps-3">
+                    <li><a class="nav-link" href="/view-student-registrations">View Registrations</a></li>
+                </ul>
+            </div>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="collapse" href="#manageFeedbackDropdown" role="button" aria-expanded="true" aria-controls="manageUsersDropdown">
+                Feedback
+            </a>
+            <div class="show collapse" id="manageFeedbackDropdown">
+                <ul class="list-unstyled ps-3">
+                    <li><a class="nav-link" href="/view-feedback">View Feedback</a></li>
+                </ul>
+            </div>
+        </li>
+    </ul>
+    <div style="position: absolute; bottom: 20px; width: 100%;">
+        <a class="nav-link d-flex align-items-center ps-3" href="/logout">Logout</a>
+    </div>    
+</nav>
+
