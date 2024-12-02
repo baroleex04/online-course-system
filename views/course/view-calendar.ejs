@@ -14,6 +14,9 @@
             display: flex;
             flex-direction: column;
         }
+        .course-cell {
+            background-color: inherit;
+        }
         .container {
             margin-top: 30px;
             background-color: #ffffff;
@@ -27,6 +30,7 @@
             border-collapse: collapse;
             margin-top: 20px;
             text-align: center;
+            
         }
         th, td {
             border: 1px solid #ddd;
@@ -85,6 +89,9 @@
                         <a class="nav-link" href="/feedback">Feedback a Course</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="/view-feedback">View Feedback</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="/logout">Logout</a>
                     </li>
                 </ul>
@@ -94,7 +101,9 @@
 
     <!-- Main Content -->
     <div class="container">
-        <h1 class="text-center">My Registered Courses (Current Semester)</h1>
+        <h1 class="text-center">My Registered Courses (Semester <%= nextSemesterCode %>)</h1>
+        <h1 class="text-center">Total credit: <%= totalCredit %></h1>
+    
         <table>
             <thead>
                 <tr>
@@ -109,12 +118,42 @@
                 </tr>
             </thead>
             <tbody>
-                <% for (let period = 1; period <= 12; period++) { %>
+                <% 
+                // Softer pastel colors
+                const colors = ['#FFB3B3', '#B3FFB3', '#B3D9FF', '#FFB3D9', '#D9B3FF', '#B3FFFF', '#FFEBB3'];
+                const courseColors = {};  // Object to store colors for each course
+                const usedColors = new Set();  // To keep track of already used colors
+                
+                // Function to get a fixed color for each course
+                function getCourseColor(course) {
+                    if (!courseColors[course]) {
+                        // Find the first available color not used yet
+                        let color;
+                        for (let i = 0; i < colors.length; i++) {
+                            if (!usedColors.has(colors[i])) {
+                                color = colors[i];
+                                usedColors.add(color);
+                                break;
+                            }
+                        }
+                        // If all colors are used, fallback to a random one
+                        if (!color) {
+                            color = colors[0];  // Fallback to the first color if needed
+                        }
+                        courseColors[course] = color;  // Assign the color to the course
+                    }
+                    return courseColors[course];  // Return the assigned color
+                }
+    
+                for (let period = 1; period <= 15; period++) { %>
                     <tr>
-                        <td class="time-slot">Period <%= period %></td>
-                        <% for (let day = 2; day <= 8; day++) { %>
-                            <td>
-                                <%= timetable[period] && timetable[period][day] ? timetable[period][day] : '' %>
+                        <td class="time-slot">Period <%= period %><br><%= period + 5 %>h-<%= period + 6 %>h</td>
+                        <% for (let day = 2; day <= 8; day++) { 
+                            const course = timetable[period] && timetable[period][day] ? timetable[period][day] : '';
+                            const color = course ? getCourseColor(course) : 'transparent';  // Default to 'transparent' if no course
+                        %>
+                            <td style="background-color: <%= color %>;">
+                                <%= course %>  <!-- Empty cells will remain blank -->
                             </td>
                         <% } %>
                     </tr>
@@ -122,6 +161,9 @@
             </tbody>
         </table>
     </div>
+    
+    
+    
 
     <!-- Include Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
