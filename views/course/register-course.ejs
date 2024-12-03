@@ -122,9 +122,9 @@
     </nav>
     
     <div class="container">
-        <h1 class="text-center">Register for a Course</h1>
-        
         <!-- Search Form -->
+        <h1 class="text-center">Register for next Semester: <%= nextSemesterCode %></h1>
+
         <form action="/register-course" method="GET" class="mb-2">
             <div class="row g-3 align-items-center">
                 <div class="col-md-9">
@@ -159,8 +159,7 @@
             <ul class="course-list">
                 <% courses.forEach(course => { %>
                     <li class="course-item">
-                        <h3><%= course.name %> (<%= course.cid %>) - Semester: <%= course.semester %></h3>
-                        <p><strong>Credits:</strong> <%= course.credit %></p>
+                        <h3><%= course.name %> (<%= course.cid %>)</h3>
                         <p><strong>Timetable:</strong></p>
                         <ul>
                             <% course.timetable.forEach(slot => { %>
@@ -173,13 +172,14 @@
                                     <% if (slot.week_day === 6) { %>Friday<% } %>
                                     <% if (slot.week_day === 7) { %>Saturday<% } %>
                                     <% if (slot.week_day === 8) { %>Sunday<% } %>,
-                                    Period: <%= slot.class_period %>
+                                    Period: <%= slot.class_period %> (<%= slot.class_period + 5 %>h - <%= slot.class_period + 6 %>h)
                                 </li>
                             <% }) %>
                         </ul>                        
                         <form action="/register-course" method="POST">
                             <input type="hidden" name="cid" value="<%= course.cid %>" />
                             <input type="hidden" name="semester" value="<%= course.semester %>" />
+                            <input type="hidden" name="nextSemesterCode" value="<%= nextSemesterCode %>" />
                             <button type="submit" class="btn register-btn w-100">Register</button>
                         </form>
                     </li>
