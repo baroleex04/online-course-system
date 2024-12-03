@@ -215,55 +215,6 @@ app.get('/', (req, res) => {
 });
 
 // GET :/register-course
-app.get('/register-course', authorizeRole(['Student']), (req, res) => {
-    const studentId = req.session.user_id;
-    const userType = req.session.user_type;
-    const searchQuery = req.query.search || ''; // Default to empty if no search term
-
-    const query = `
-        SELECT c.cid, c.name, c.credit, c.semester, t.week_day, t.class_period
-        FROM Course c
-        JOIN Timetable t ON c.cid = t.course_cid AND c.semester = t.semester
-        WHERE NOT EXISTS (
-            SELECT 1 FROM Registration r
-            WHERE r.course_cid = c.cid AND r.semester = c.semester AND r.user_id = ?
-        )
-        AND (c.name LIKE ? OR c.cid LIKE ?) -- Search by name or ID
-        ORDER BY c.cid, t.week_day, t.class_period
-    `;
-
-    connection.query(query, [studentId, `%${searchQuery}%`, `%${searchQuery}%`], (err, results) => {
-        if (err) {
-            console.error('Error fetching courses:', err);
-            res.status(500).send('Error fetching courses.');
-            return;
-        }
-
-        const courses = {};
-        results.forEach((row) => {
-            const key = `${row.cid}-${row.semester}`;
-            if (!courses[key]) {
-                courses[key] = {
-                    cid: row.cid,
-                    name: row.name,
-                    credit: row.credit,
-                    semester: row.semester,
-                    timetable: [],
-                };
-            }
-            courses[key].timetable.push({ week_day: row.week_day, class_period: row.class_period });
-        });
-
-        res.render('course/register-course', { 
-            courses: Object.values(courses), 
-            searchQuery, // Pass the search term to avoid undefined
-            errorMessage: null,
-            userType, 
-            successMessage: null
-        });
-    });
-});
-
 app.post('/register-course', authorizeRole(['Student']), (req, res) => {
     const { cid, semester, search } = req.body; // Include `search` from the form
     const studentId = req.session.user_id;
@@ -1502,6 +1453,7 @@ app.get('/courses', authorizeRole(['Student', 'Faculty', 'Admin', 'Staff']), (re
 
         res.render('course/list-courses', {
             courses: results,
+            successMessage: null,
             query: query || '',
             criteria: criteria || 'cid',
             userType, // Pass the role to the EJS template

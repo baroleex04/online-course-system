@@ -18,10 +18,20 @@
     <% if (userType === 'Faculty') { %>
         <%- include('../partials/nav-faculty'); %>
     <% } %>
+    <% if (userType === 'Student') { %>
+        <%- include('../partials/nav-student'); %>
+    <% } %>
 
     <!-- Page Content -->
     <div class="container" style="margin-left: 250px; padding-top: 20px;">
         <h1 class="text-center text-dark mb-4">Courses</h1>
+        <div class="container">
+            <% if (successMessage) { %>
+                <div class="alert alert-success" role="alert">
+                    <%= successMessage %>
+                </div>
+            <% } %>
+        </div>
 
         <!-- Search Form -->
         <form class="search-form" action="/courses" method="GET">
@@ -76,12 +86,15 @@
                 <tbody>
                     <% courses.forEach(course => { %>
                         <tr>
+                            <% if (userType === 'Admin') { %>
                             <td><input type="checkbox" name="selectedCourses" value="<%= course.cid %>" class="course-checkbox"></td> <!-- Checkbox to select individual course -->
+                            <% } %>
                             <td><%= course.name %></td>
                             <td><%= course.cid %></td>
                             <td><%= course.semester %></td>
                             <td><%= course.credit %></td>
                             <td><%= course.instructor %></td>
+                            <% if (userType === 'Admin' || userType === 'Faculty' || userType === 'Staff') { %>
                             <td>
                                 <a href="/course-details/<%= course.cid %>/<%= course.semester %>" class="btn btn-outline-secondary btn-sm">View Details</a>
                                 <a href="/edit-course/<%= course.cid %>/<%= course.semester %>" class="btn btn-outline-primary btn-sm">Edit</a>
@@ -89,6 +102,17 @@
                                     <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Are you sure you want to delete this course?')">Delete</button>
                                 </form>
                             </td>
+                            <% } %>
+                            <% if (userType === 'Student') { %>
+                                <td>
+                                    <a href="/course-details/<%= course.cid %>/<%= course.semester %>" class="btn btn-outline-secondary btn-sm">View Details</a>
+                                    <form action="/register-course" method="POST" style="display:inline;">
+                                        <input type="hidden" name="cid" value="<%= course.cid %>">
+                                        <input type="hidden" name="semester" value="<%= course.semester %>">
+                                        <button type="submit" class="btn btn-outline-primary btn-sm">Register</button>
+                                    </form>
+                                </td>
+                            <% } %>
                         </tr>
                     <% }) %>
                 </tbody>

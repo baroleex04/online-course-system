@@ -10,13 +10,17 @@
 </head>
 <body>
     <!-- Navbar -->
-    <% if (userType === 'Student') { %>
-        
-    <% } else if (userType === 'Faculty' || userType === 'Staff') { %>
-            
-    <% } %>
     <% if (userType === 'Admin') { %>
         <%- include('../partials/nav-admin'); %>
+    <% } %>
+    <% if (userType === 'Staff') { %>
+        <%- include('../partials/nav-staff'); %>
+    <% } %>
+    <% if (userType === 'Faculty') { %>
+        <%- include('../partials/nav-faculty'); %>
+    <% } %>
+    <% if (userType === 'Student') { %>
+        <%- include('../partials/nav-student'); %>
     <% } %>
 
     <!-- Main Content -->
@@ -86,7 +90,7 @@
             <p>No timetable available for this course.</p>
         <% } %>
 
-        <a href="/courses" class="btn btn-outline-primary btn-back">Back to Courses</a>
+        <a href="/courses" class="btn btn-outline-secondary btn-back">Back to Courses</a>
     </div>
 
     <!-- Include Bootstrap JS -->
