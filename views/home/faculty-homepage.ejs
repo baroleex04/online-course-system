@@ -3,125 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Faculty Homepage</title>
-    <!-- Include Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: linear-gradient(to right, #5d7dd0, #2575fc);
-            color: #fff;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-        .navbar {
-            background-color: #f8f9fa !important; /* Brighter navbar */
-            padding: 0; /* Remove padding for full-height nav items */
-        }
-        .nav-link:hover {
-            background-color: #e0e3e7;
-            transform: scale(1.05);
-        }
-        .welcome {
-            font-size: 1.5rem;
-            margin-top: 20px;
-        }
-        .card-container {
-            margin-top: 30px;
-        }
-    </style>
+    <title>Staff Homepage</title>
+    <%- include('../partials/style'); %>
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-light">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">Faculty Portal</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto align-items-stretch">
-                    <li class="nav-item">
-                        <a class="nav-link" href="/courses">View Courses</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/add-course">Add Course</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/view-student-registrations">View Student Registrations</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/view-feedback">View Feedback</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/edit-course">Edit Course</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/logout">Logout</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Welcome Section -->
-    <div class="container text-center">
-        <div class="welcome">
-            <h1>Welcome, <%= facultyName %>!</h1>
-            <p>Manage your courses and view feedback efficiently.</p>
-        </div>
-
-        <!-- Cards for Quick Links -->
-        <div class="row card-container">
-            <div class="col-md-4 mb-3">
-                <div class="card shadow">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">View Courses</h5>
-                        <p class="card-text">See the list of courses and details.</p>
-                        <a href="/courses" class="btn btn-primary">Go</a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4 mb-3">
-                <div class="card shadow">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">Add a Course</h5>
-                        <p class="card-text">Create new courses for the upcoming semester.</p>
-                        <a href="/add-course" class="btn btn-success">Add</a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4 mb-3">
-                <div class="card shadow">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">View Registrations</h5>
-                        <p class="card-text">View all registrations of students.</p>
-                        <a href="/view-student-registrations" class="btn btn-success">View</a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4 mb-3">
-                <div class="card shadow">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">View Feedbacks</h5>
-                        <p class="card-text">See feedback provided by students for your courses.</p>
-                        <a href="/view-feedback" class="btn btn-info">View</a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4 mb-3">
-                <div class="card shadow">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">Edit Courses</h5>
-                        <p class="card-text">Update the details of existing courses.</p>
-                        <a href="/list-courses" class="btn btn-warning">Edit</a>
-                    </div>
-                </div>
-            </div>
+    <%- include('../partials/nav-staff'); %>
+    <div class="content">
+        <!-- <img 
+            src="https://img.freepik.com/premium-vector/cartoon-urban-cityscape-with-college-academy-students-university-architecture-background_212168-968.jpg" 
+            alt="Admin Illustration"> -->
+        <div class="container text-center welcome-text">
+            <h1>Welcome!</h1>
+            <p>Manage courses, registration, and more.</p>
         </div>
     </div>
-
-    <!-- Include Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

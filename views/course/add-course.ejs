@@ -4,232 +4,104 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Add Course</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: linear-gradient(to right, #6691c8, #2575fc);
-            color: #fff;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-        .navbar {
-            background-color: #f8f9fa !important;
-            padding: 0;
-        }
-        .nav-link:hover {
-            background-color: #e0e3e7;
-            transform: scale(1.05);
-        }
-    </style>
     <!-- Include Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script>
-        // Function to add a new timetable entry row
-        function addTimetableEntry() {
-            const container = document.getElementById('timetable-container');
-            const row = document.createElement('div');
-            row.className = 'row timetable-entry mb-3';
-
-            row.innerHTML = `
-                <div class="col-md-5">
-                    <select name="week_day[]" class="form-select" required>
-                        <option value="2">Monday</option>
-                        <option value="3">Tuesday</option>
-                        <option value="4">Wednesday</option>
-                        <option value="5">Thursday</option>
-                        <option value="6">Friday</option>
-                        <option value="7">Saturday</option>
-                        <option value="8">Sunday</option>
-                    </select>
-                </div>
-                <div class="col-md-5">
-                    <select name="class_period[]" class="form-select" required>
-                        <% for (let i = 1; i <= 12; i++) { %>
-                            <option value="<%= i %>">Period <%= i %></option>
-                        <% } %>
-                    </select>
-                </div>
-                <div class="col-md-2 d-flex align-items-center">
-                    <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.parentElement.remove()">Remove</button>
-                </div>
-            `;
-
-            container.appendChild(row);
-        }
-
-        // Validate for duplicate timetable entries
-        document.addEventListener('submit', (event) => {
-            const weekDays = Array.from(document.querySelectorAll("select[name='week_day[]']")).map((el) => el.value);
-            const classPeriods = Array.from(document.querySelectorAll("select[name='class_period[]']")).map((el) => el.value);
-        
-            const timetableSet = new Set();
-            for (let i = 0; i < weekDays.length; i++) {
-                const key = `${weekDays[i]}-${classPeriods[i]}`;
-                if (timetableSet.has(key)) {
-                    alert('Duplicate timetable entries are not allowed!');
-                    event.preventDefault();
-                    return;
-                }
-                timetableSet.add(key);
-            }
-        });
-    </script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <%- include('../partials/style'); %>
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-light" style="height: 40px;">
-        <div class="container-fluid">
-            <a class="navbar-brand" href='/<%= userType.toLowerCase() %>-homepage'>
-                <%= userType %> Portal
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto align-items-stretch">
-                    <% if (userType === 'Student') { %>
-                        <!-- Student-specific Nav Items -->
-                        <li class="nav-item">
-                            <a class="nav-link" href="/courses">View Courses</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/register-course">Register a Course</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/view-calendar">Timetable</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/cancel-course">Cancel a Course</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/past-courses">History Courses</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/feedback">Feedback a Course</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/view-feedback">View Feedback</a>
-                        </li>
-                    <% } else if (userType === 'Faculty' || userType === 'Staff') { %>
-                        <!-- Faculty-specific Nav Items -->
-                        <li class="nav-item">
-                            <a class="nav-link" href="/courses">View Courses</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/add-course">Add Course</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/view-student-registrations">View Student Registrations</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/view-feedback">View Feedback</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/edit-course">Edit Course</a>
-                        </li>
-                    <% } %>
-                    <% if (userType === 'Admin') { %>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/courses">View Courses</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/add-course">Add Course</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/list-courses">Edit Courses</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/view-student-registrations">View Student Registrations</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/view-feedback">View Feedback</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/create-user">Create Users</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/delete-user">Delete Users</a>
-                        </li>
-                    <% } %>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/logout">Logout</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-    <!-- Success and Error Messages -->
-    <% if (successMessage) { %>
-        <div class="alert alert-success" role="alert">
-            <%= successMessage %>
-        </div>
+    <% if (userType === 'Admin') { %>
+        <%- include('../partials/nav-admin'); %>
     <% } %>
-    <% if (errorMessage) { %>
-        <div class="alert alert-danger" role="alert">
-            <%= errorMessage %>
-        </div>
+    <% if (userType === 'Staff') { %>
+        <%- include('../partials/nav-staff'); %>
     <% } %>
-    <div class="container my-5">
+    <% if (userType === 'Faculty') { %>
+        <%- include('../partials/nav-faculty'); %>
+    <% } %>
+
+    <div class="container my-5" style="margin-left: 250px; padding-top: 20px;">
         <div class="row justify-content-center">
             <div class="col-md-8">
                 <div class="card shadow">
                     <div class="card-body">
-                        <h1 class="text-center text-primary mb-4">Add Course</h1>
+                        <h1 class="text-center text-dark mb-4">Add Course</h1>
+                        <% if (successMessage) { %>
+                            <div class="alert alert-success" role="alert">
+                                <%= successMessage %>
+                            </div>
+                        <% } %>
+                        <% if (errorMessage) { %>
+                            <div class="alert alert-danger" role="alert">
+                                <%= errorMessage %>
+                            </div>
+                        <% } %>
                         <form action="/add-course" method="POST">
                             <!-- Course Details -->
                             <div class="mb-3">
-                                <label for="cid" class="form-label">Course ID</label>
-                                <input type="text" name="cid" id="cid" class="form-control" placeholder="Course ID" required>
+                                <label for="course_id" class="form-label">Course ID</label>
+                                <input type="text" name="cid" id="course_id" class="form-control" placeholder="e.g., CO2001" required>
                             </div>
+
                             <div class="mb-3">
                                 <label for="semester" class="form-label">Semester</label>
-                                <input type="text" name="semester" id="semester" class="form-control" placeholder="Semester (e.g., 2024FALL)" required>
+                                <input type="text" name="semester" id="semester" class="form-control" placeholder="e.g., 243" required>
                             </div>
+
                             <div class="mb-3">
                                 <label for="name" class="form-label">Course Name</label>
                                 <input type="text" name="name" id="name" class="form-control" placeholder="Course Name" required>
                             </div>
+
                             <div class="mb-3">
                                 <label for="credit" class="form-label">Credits</label>
-                                <input type="number" name="credit" id="credit" class="form-control" placeholder="Credits" required min="1" max="10">
+                                <input type="number" name="credit" id="credit" class="form-control" placeholder="Course Credit" required>
                             </div>
+
                             <div class="mb-3">
                                 <label for="instructor" class="form-label">Instructor</label>
-                                <input type="text" name="instructor" id="instructor" class="form-control" placeholder="Instructor" required>
+                                <select name="instructor" id="instructor" class="form-select" required>
+                                    <option value="" disabled selected>Select Instructor</option>
+                                    <option value="John Smith">John Smith</option>
+                                    <option value="James Harvey">James Harvey</option>
+                                </select>
                             </div>
 
-                            <!-- Timetable Entries -->
+                            <!-- Timetable Grid -->
                             <h2 class="text-secondary mt-4">Timetable</h2>
-                            <div id="timetable-container">
-                                <!-- Initial timetable entry -->
-                                <div class="row timetable-entry mb-3">
-                                    <div class="col-md-5">
-                                        <select name="week_day[]" class="form-select" required>
-                                            <option value="2">Monday</option>
-                                            <option value="3">Tuesday</option>
-                                            <option value="4">Wednesday</option>
-                                            <option value="5">Thursday</option>
-                                            <option value="6">Friday</option>
-                                            <option value="7">Saturday</option>
-                                            <option value="8">Sunday</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-5">
-                                        <select name="class_period[]" class="form-select" required>
+                            <table class="table table-bordered table-sm" style="font-size: 12px; text-align: center;">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 80px;">Day/Period</th>
+                                        <% for (let i = 1; i <= 12; i++) { %>
+                                            <th>P<%= i %></th> <!-- Shortened "Period" -->
+                                        <% } %>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']; %>
+                                    <% days.forEach((day, index) => { 
+                                        // Map index (0-6) to the range 2-8
+                                        const mappedDay = index + 2;
+                                    %>
+                                        <tr>
+                                            <td><%= day %></td>
                                             <% for (let i = 1; i <= 12; i++) { %>
-                                                <option value="<%= i %>">Period <%= i %></option>
+                                                <td>
+                                                    <input 
+                                                        type="checkbox" 
+                                                        name="timetable[<%= mappedDay %>][<%= i %>]" 
+                                                        class="form-check-input time-checkbox" 
+                                                        data-day="<%= mappedDay %>" 
+                                                        data-period="<%= i %>"
+                                                    />
+                                                </td>
                                             <% } %>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-2 d-flex align-items-center">
-                                        <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.parentElement.remove()">Remove</button>
-                                    </div>
-                                </div>
-                            </div>
-                            <button type="button" class="btn btn-secondary btn-sm mb-3" onclick="addTimetableEntry()">Add Timetable Entry</button>
+                                        </tr>
+                                    <% }); %>
+                                </tbody>
+                            </table>
 
-                            <button type="submit" class="btn btn-primary w-100">Add Course</button>
+                            <button type="submit" class="btn btn-outline-dark w-100">Add Course</button>
                         </form>
                     </div>
                 </div>
@@ -239,5 +111,41 @@
 
     <!-- Include Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.querySelector('form');
+            form.addEventListener('submit', function(event) {
+                const timetableData = {};  // Initialize the object to collect timetable data
+                const checkboxes = document.querySelectorAll('.time-checkbox');
+            
+                // Collect the checked checkboxes and store them in the timetableData object
+                checkboxes.forEach(checkbox => {
+                    if (checkbox.checked) {
+                        const day = checkbox.dataset.day;  // Get the day index (0 to 6)
+                        const period = checkbox.dataset.period;  // Get the period (1 to 12)
+                
+                        // If day doesn't exist in timetableData, initialize it
+                        if (!timetableData[day]) {
+                            timetableData[day] = {};  // Initialize day as an object
+                        }
+                        timetableData[day][period] = 'on';  // Mark the period as 'on'
+                    }
+                });
+            
+                // If no timetable is selected, prevent form submission
+                if (Object.keys(timetableData).length === 0) {
+                    alert('Please select at least one timetable slot');
+                    event.preventDefault();
+                } else {
+                    // Add timetable data as hidden field (with proper JSON string format)
+                    const timetableInput = document.createElement('input');
+                    timetableInput.type = 'hidden';
+                    timetableInput.name = 'timetable';  // Ensure this matches the backend expectation
+                    timetableInput.value = JSON.stringify(timetableData);  // Serialize the object properly
+                    form.appendChild(timetableInput);
+                }
+            });
+        });                   
+    </script>
 </body>
 </html>

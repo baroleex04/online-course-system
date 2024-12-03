@@ -1,0 +1,44 @@
+<nav class="sidebar" style="position: fixed; top: 0; left: 0; height: 100%; width: 250px; padding-top: 20px;">
+    <div class="p-3">
+        <a href="faculty-homepage" class="d-flex align-items-center pb-3 mb-3 link-dark text-decoration-none border-bottom">
+            <span class="text-center nav-link">Faculty Portal</span>
+        </a>
+    </div>
+    <ul class="nav flex-column">
+        <li class="nav-item">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="collapse" href="#manageCoursesDropdown" role="button" aria-expanded="true" aria-controls="manageUsersDropdown">
+                Course
+            </a>
+            <div class="show collapse" id="manageCoursesDropdown">
+                <ul class="list-unstyled ps-3">
+                    <li><a class="nav-link" href="/courses">View courses</a></li>
+                    <li><a class="nav-link" href="/add-course">Create a course</a></li>
+                </ul>
+            </div>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="collapse" href="#manageRegistrationDropdown" role="button" aria-expanded="true" aria-controls="manageUsersDropdown">
+                Registration
+            </a>
+            <div class="show collapse" id="manageRegistrationDropdown">
+                <ul class="list-unstyled ps-3">
+                    <li><a class="nav-link" href="/view-student-registrations">View registrations</a></li>
+                </ul>
+            </div>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link dropdown-toggle" data-bs-toggle="collapse" href="#manageFeedbackDropdown" role="button" aria-expanded="true" aria-controls="manageUsersDropdown">
+                Feedback
+            </a>
+            <div class="show collapse" id="manageFeedbackDropdown">
+                <ul class="list-unstyled ps-3">
+                    <li><a class="nav-link" href="/view-feedback">View feedback</a></li>
+                </ul>
+            </div>
+        </li>
+    </ul>
+    <div style="position: absolute; bottom: 20px; width: 100%;">
+        <a class="nav-link d-flex align-items-center ps-3" href="/logout">Logout</a>
+    </div>    
+</nav>
+
