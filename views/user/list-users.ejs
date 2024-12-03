@@ -46,20 +46,11 @@
             </div>
         </form>
 
-        <!-- Multi-Delete Form -->
-        <% if (userType === 'Admin') { %>
-            <form action="/delete-users" method="POST" id="delete-users-form">
-                <button type="submit" class="btn btn-outline-danger mb-3" id="delete-selected" disabled>Delete Selected Users</button>
-        <% } %>
-
         <!-- User List -->
         <% if (users.length > 0) { %>
             <table class="table table-bordered">
                 <thead>
                     <tr>
-                        <% if (userType === 'Admin') { %>
-                            <th><input type="checkbox" id="select-all" onclick="toggleSelectAll()"></th> <!-- Checkbox to select all -->
-                        <% } %>
                         <th>User ID</th>
                         <th>Username</th>
                         <th>Full Name</th>
@@ -71,7 +62,6 @@
                 <tbody>
                     <% users.forEach(user => { %>
                         <tr>
-                            <td><input type="checkbox" name="selectedUsers" value="<%= user.user_id %>" class="user-checkbox"></td> <!-- Checkbox to select individual user -->
                             <td><%= user.user_id %></td>
                             <td><%= user.username %></td>
                             <td><%= user.fname %> <%= user.lname %></td>

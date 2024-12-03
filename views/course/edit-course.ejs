@@ -48,20 +48,18 @@
                                 </thead>
                                 <tbody>
                                     <% const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']; %>
-                                    <% days.forEach((day, index) => { 
-                                        // Map index (0-6) to the range 2-8
-                                        const mappedDay = index + 2;
-                                    %>
+                                    <% days.forEach((day) => { %>
                                         <tr>
                                             <td><%= day %></td>
                                             <% for (let i = 1; i <= 12; i++) { %>
                                                 <td>
                                                     <input 
                                                         type="checkbox" 
-                                                        name="timetable[<%= mappedDay %>][<%= i %>]" 
+                                                        name="timetable[<%= day %>][<%= i %>]" 
                                                         class="form-check-input time-checkbox" 
-                                                        data-day="<%= mappedDay %>" 
+                                                        data-day="<%= day %>" 
                                                         data-period="<%= i %>"
+                                                        <% if (course.timetable[day] && course.timetable[day][i]) { %> checked <% } %>
                                                     />
                                                 </td>
                                             <% } %>

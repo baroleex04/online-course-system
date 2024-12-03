@@ -8,7 +8,7 @@
     <%- include('../partials/style'); %>
 </head>
 <body>
-    <!-- Navbar -->
+    <!-- Navbar (based on user role) -->
     <% if (userType === 'Admin') { %>
         <%- include('../partials/nav-admin'); %>
     <% } %>
@@ -25,10 +25,21 @@
     <!-- Page Content -->
     <div class="container" style="margin-left: 250px; padding-top: 20px;">
         <h1 class="text-center text-dark mb-4">Courses</h1>
+
+        <!-- Success Message -->
         <div class="container">
             <% if (successMessage) { %>
                 <div class="alert alert-success" role="alert">
                     <%= successMessage %>
+                </div>
+            <% } %>
+        </div>
+
+        <!-- Error Message -->
+        <div class="container">
+            <% if (errorMessage) { %>
+                <div class="alert alert-danger" role="alert">
+                    <%= errorMessage %>
                 </div>
             <% } %>
         </div>
@@ -61,10 +72,9 @@
             </div>
         </form>
 
-        <!-- Multi-Delete Form -->
+        <!-- Multi-Delete Form (only visible for Admin) -->
         <% if (userType === 'Admin') { %>
             <form action="/delete-courses" method="POST" id="delete-courses-form">
-                <button type="submit" class="btn btn-outline-danger mb-3" id="delete-selected" disabled>Delete Selected Courses</button>
         <% } %>
 
         <!-- Course List -->
@@ -72,9 +82,6 @@
             <table class="table table-bordered">
                 <thead>
                     <tr>
-                        <% if (userType === 'Admin') { %>
-                            <th><input type="checkbox" id="select-all" onclick="toggleSelectAll()"></th> <!-- Checkbox to select all -->
-                        <% } %>
                         <th>Course Name</th>
                         <th>Course ID</th>
                         <th>Semester</th>
@@ -86,9 +93,6 @@
                 <tbody>
                     <% courses.forEach(course => { %>
                         <tr>
-                            <% if (userType === 'Admin') { %>
-                            <td><input type="checkbox" name="selectedCourses" value="<%= course.cid %>" class="course-checkbox"></td> <!-- Checkbox to select individual course -->
-                            <% } %>
                             <td><%= course.name %></td>
                             <td><%= course.cid %></td>
                             <td><%= course.semester %></td>
@@ -106,11 +110,19 @@
                             <% if (userType === 'Student') { %>
                                 <td>
                                     <a href="/course-details/<%= course.cid %>/<%= course.semester %>" class="btn btn-outline-secondary btn-sm">View Details</a>
-                                    <form action="/register-course" method="POST" style="display:inline;">
-                                        <input type="hidden" name="cid" value="<%= course.cid %>">
-                                        <input type="hidden" name="semester" value="<%= course.semester %>">
-                                        <button type="submit" class="btn btn-outline-primary btn-sm">Register</button>
-                                    </form>
+                                    <% 
+                                        // Check if the course is already registered by the student
+                                        const courseKey = `${course.cid}-${course.semester}`;
+                                    %>
+                                    <% if (registeredCourses.has(courseKey)) { %>
+                                        <button class="btn btn-outline-secondary btn-sm" disabled>Registered</button>
+                                    <% } else { %>
+                                        <form action="/register-course" method="POST" style="display:inline;">
+                                            <input type="hidden" name="cid" value="<%= course.cid %>">
+                                            <input type="hidden" name="semester" value="<%= course.semester %>">
+                                            <button type="submit" class="btn btn-outline-primary btn-sm">Register</button>
+                                        </form>
+                                    <% } %>
                                 </td>
                             <% } %>
                         </tr>
@@ -132,26 +144,21 @@
     <!-- Script for selecting all checkboxes -->
     <script>
         function toggleSelectAll() {
-            const selectAllCheckbox = document.getElementById("select-all");
-            const courseCheckboxes = document.querySelectorAll(".course-checkbox");
-            const deleteButton = document.getElementById("delete-selected");
-
-            courseCheckboxes.forEach(checkbox => {
-                checkbox.checked = selectAllCheckbox.checked;
-            });
-
-            // Enable or disable the "Delete Selected" button
-            deleteButton.disabled = !Array.from(courseCheckboxes).some(checkbox => checkbox.checked);
+            const selectAll = document.getElementById('select-all');
+            const checkboxes = document.querySelectorAll('input[name="selectedCourses[]"]');
+            checkboxes.forEach(cb => cb.checked = selectAll.checked);
+            toggleDeleteButton();
         }
-
-        // Enable the "Delete Selected" button if any course is selected
-        document.querySelectorAll(".course-checkbox").forEach(checkbox => {
-            checkbox.addEventListener("change", function() {
-                const deleteButton = document.getElementById("delete-selected");
-                const isAnyCourseSelected = Array.from(document.querySelectorAll(".course-checkbox")).some(cb => cb.checked);
-                deleteButton.disabled = !isAnyCourseSelected;
-            });
+    
+        document.querySelectorAll('input[name="selectedCourses[]"]').forEach(cb => {
+            cb.addEventListener('change', toggleDeleteButton);
         });
+    
+        function toggleDeleteButton() {
+            const checkboxes = document.querySelectorAll('input[name="selectedCourses[]"]');
+            const deleteButton = document.getElementById('delete-selected');
+            deleteButton.disabled = !Array.from(checkboxes).some(cb => cb.checked);
+        }
     </script>
 </body>
 </html>
