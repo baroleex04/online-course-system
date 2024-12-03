@@ -5,6 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>View Feedback</title>
     <%- include('../partials/style'); %>
+    <style>
+        /* Limit feedback content length with ellipsis */
+        .feedback-content {
+            display: block;
+            max-width: 100%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Class to show full feedback */
+        .full-feedback {
+            white-space: normal;
+            overflow: visible;
+        }
+
+        /* Container for feedback and "See More" button aligned horizontally */
+        .feedback-container {
+            display: flex;
+            align-items: center;
+        }
+
+        /* Ensure the "See More" button is not stretched */
+        .feedback-container button {
+            margin-left: 10px;
+        }
+    </style>
 </head>
 <body>
     <% if (userType === 'Admin') { %>
@@ -16,6 +43,7 @@
     <% if (userType === 'Faculty') { %>
         <%- include('../partials/nav-faculty'); %>
     <% } %>
+    
     <div class="container" style="margin-left: 250px; padding-top: 20px;">
         <h1 class="text-center">Feedback</h1>
 
@@ -53,13 +81,27 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <% feedback.forEach(entry => { %>
+                    <% feedback.forEach(entry => { 
+                        const feedbackLength = entry.feedback_des.length; 
+                        const maxLength = 100; // Set the max length for feedback content
+                        const isLongFeedback = feedbackLength > maxLength;
+                    %>
                     <tr>
                         <td><%= entry.course_name %></td>
                         <td><%= entry.cid %></td>
                         <td><%= entry.semester %></td>
                         <td><%= entry.fname %> <%= entry.lname %></td>
-                        <td><%= entry.feedback_des %></td>
+                        <td>
+                            <div class="feedback-container">
+                                <span class="feedback-content <%= isLongFeedback ? '' : 'full-feedback' %>" 
+                                      id="feedback_<%= entry.cid + entry.semester %>">
+                                    <%= entry.feedback_des.substring(0, maxLength) %><%= isLongFeedback ? '...' : '' %>
+                                </span>
+                                <% if (isLongFeedback) { %>
+                                    <button type="button" class="btn btn-link" onclick="toggleFeedback('<%= entry.cid + entry.semester %>')">See More</button>
+                                <% } %>
+                            </div>
+                        </td>
                     </tr>
                     <% }) %>
                 </tbody>
@@ -73,5 +115,20 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function toggleFeedback(feedbackId) {
+            const feedbackContent = document.getElementById('feedback_' + feedbackId);
+            const button = feedbackContent.nextElementSibling;
+            
+            // Toggle the content between full and truncated
+            if (feedbackContent.classList.contains('full-feedback')) {
+                feedbackContent.classList.remove('full-feedback');
+                button.textContent = "See More";
+            } else {
+                feedbackContent.classList.add('full-feedback');
+                button.textContent = "Hide";
+            }
+        }
+    </script>
 </body>
 </html>

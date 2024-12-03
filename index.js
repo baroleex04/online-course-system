@@ -214,14 +214,13 @@ app.get('/', (req, res) => {
     res.render('home'); // Render home page with navbar
 });
 
-// GET :/register-course
-
+// POST :/register-course
 app.post('/register-course', authorizeRole(['Student']), (req, res) => {
-    const { cid, semester, search, nextSemesterCode } = req.body; // Include `search` from the form
+    const { cid, semester, search } = req.body; // The course ID (cid), semester, and search query
     const studentId = req.session.user_id;
     const userType = req.session.user_type;
 
-
+    // Query to check for timetable conflicts
     const overlapCheckQuery = `
         SELECT t.week_day, t.class_period
         FROM Timetable t
@@ -244,6 +243,7 @@ app.post('/register-course', authorizeRole(['Student']), (req, res) => {
         }
 
         if (results.length > 0) {
+            // If there are overlapping courses, send an error message
             const errorMessage = 'You cannot register for this course because it conflicts with your existing schedule.';
             const fetchCoursesQuery = `
                 SELECT c.cid, c.name, c.credit, c.semester, t.week_day, t.class_period
@@ -258,7 +258,7 @@ app.post('/register-course', authorizeRole(['Student']), (req, res) => {
 
             connection.query(fetchCoursesQuery, [studentId], (fetchErr, fetchResults) => {
                 if (fetchErr) {
-                    console.error('Error refetching courses:', fetchErr);
+                    console.error('Error fetching courses:', fetchErr);
                     res.status(500).send('Error fetching courses.');
                     return;
                 }
@@ -273,24 +273,25 @@ app.post('/register-course', authorizeRole(['Student']), (req, res) => {
                             credit: row.credit,
                             semester: row.semester,
                             timetable: [],
-                            
                         };
                     }
                     courses[key].timetable.push({ week_day: row.week_day, class_period: row.class_period });
                 });
 
-                res.render('course/register-course', { 
-                    courses: Object.values(courses), 
+                // Render the courses list with error message
+                res.render('course/list-courses', {
+                    courses: Object.values(courses),
                     userType,
-                    searchQuery: search, 
-                    errorMessage, 
+                    query: search,
+                    errorMessage,
                     successMessage: null,
-                    nextSemesterCode: nextSemesterCode
+                    criteria: req.query.criteria || 'all',
                 });
             });
             return;
         }
 
+        // No conflict, proceed to register the course
         const registerQuery = `
             INSERT INTO Registration (user_id, course_cid, semester)
             VALUES (?, ?, ?)
@@ -305,120 +306,62 @@ app.post('/register-course', authorizeRole(['Student']), (req, res) => {
 
             logActivity(studentId, `Registered for course: ${cid} in semester ${semester}`);
 
-            res.render('course/register-course', {
+            // Successfully registered for the course, render the courses list with success message
+            res.render('course/list-courses', {
                 successMessage: 'You have successfully registered for the course!',
                 errorMessage: null,
                 userType,
-                courses: [],
-                searchQuery: search || '',
-                nextSemesterCode
+                courses: [], // Optionally, pass courses if you want to display all available courses
+                query: search || '',
+                criteria: req.query.criteria || 'all', // Ensure that criteria is passed back to the view
             });
         });
     });
 });
 
 // GET :/cancel-course
-app.get('/cancel-course', authorizeRole(['Student']), (req, res) => {
-    const studentId = req.session.user_id;
-
-    // Calculate the current semester code
-    const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().getMonth() + 1; // Months are 0-indexed
-    const currentSemester = Math.ceil(currentMonth / 4); // Divide the year into 3 semesters
-    const currentSemesterCode = `${currentYear % 100}${currentSemester}`; // Format: YY + Semester (e.g., 231)
-    let nextSemesterCode = '';
-    if(currentSemester==3){
-        nextSemesterCode = `${currentYear % 100 + 1}1`;
-    }
-    else{
-        nextSemesterCode = `${currentYear % 100}${currentSemester+1}`;
-    }
-
-    const query = `
-        SELECT c.cid, c.name, c.credit, r.semester, t.week_day, t.class_period
-        FROM Registration r
-        JOIN Course c ON r.course_cid = c.cid AND r.semester = c.semester
-        JOIN Timetable t ON c.cid = t.course_cid AND c.semester = t.semester
-        WHERE r.user_id = ? and r.semester = ? -- Only show courses for the next semester
-        ORDER BY c.cid, t.week_day, t.class_period
-    `;
-
-    connection.query(query, [studentId, nextSemesterCode], (err, results) => {
-        if (err) {
-            console.error('Error fetching registered courses:', err);
-            res.status(500).send('Error fetching registered courses.');
-            return;
-        }
-
-        // Group courses by `cid` and `semester` for display
-        const courses = {};
-        results.forEach((row) => {
-            const key = `${row.cid}-${row.semester}`;
-            if (!courses[key]) {
-                courses[key] = {
-                    cid: row.cid,
-                    name: row.name,
-                    credit: row.credit,
-                    semester: row.semester,
-                    timetable: [], // Initialize empty array for timetable entries
-                };
-            }
-            courses[key].timetable.push({
-                week_day: row.week_day,
-                class_period: row.class_period,
-            });
-        });
-
-        res.render('course/cancel-course', { 
-            courses: Object.values(courses), 
-            successMessage: null, 
-            nextSemesterCode 
-        });
-    });
-});
-
-// POST :/cancel-course
+// POST :/delete-course
 app.post('/cancel-course', authorizeRole(['Student']), (req, res) => {
-    const { cid, semester } = req.body;
     const studentId = req.session.user_id;
+    const courseCid = req.body.courseCid; // Get the course CID to delete
 
-    const query = `
+    // Query to delete the course from the registration table
+    const deleteQuery = `
         DELETE FROM Registration
-        WHERE user_id = ? AND course_cid = ? AND semester = ?
+        WHERE user_id = ? AND course_cid = ?
     `;
 
-    connection.query(query, [studentId, cid, semester], (err) => {
+    connection.query(deleteQuery, [studentId, courseCid], (err, result) => {
         if (err) {
-            console.error('Error canceling course:', err);
-            res.status(500).send('Error canceling course.');
-            return;
+            console.error('Error deleting course from registration:', err);
+            return res.status(500).send('Error deleting course from registration.');
         }
 
-        // Log the activity
-        logActivity(studentId, `Canceled course: ${cid} in semester ${semester}`);
-        // After successful cancellation, redirect to fetch updated list
-        res.redirect('/cancel-course');
+        // If successfully deleted, redirect to the view calendar page
+        res.redirect('/view-calendar');
     });
 });
 
 // GET :/feedback
+// GET :/feedback
 app.get('/feedback', authorizeRole(['Student']), (req, res) => {
     const studentId = req.session.user_id;
-
-    // Calculate the current semester code
-    const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().getMonth() + 1; // Months are 0-indexed
-    const currentSemester = Math.ceil(currentMonth / 4); // Divide the year into 3 semesters
-    const currentSemesterCode = `${currentYear % 100}${currentSemester}`; // Format: YY + Semester (e.g., 231)
+    const userType = req.session.user_type;
 
     // Query to fetch past courses eligible for feedback
     const query = `
-    SELECT c.cid, c.name, c.semester, c.credit, c.instructor
-    FROM History_courses h
-    JOIN Course c ON h.course_cid = c.cid AND h.semester = c.semester
-    WHERE h.user_id = ?
-    ORDER BY h.semester DESC
+        SELECT c.cid, c.name, c.semester, c.instructor
+        FROM History_courses h
+        JOIN Course c ON h.course_cid = c.cid AND h.semester = c.semester
+        WHERE h.user_id = ?
+        ORDER BY h.semester DESC
+    `;
 
+    // Query to check if feedback already exists for a course
+    const feedbackQuery = `
+        SELECT course_cid, semester
+        FROM Feed_Back
+        WHERE user_id = ?
     `;
 
     connection.query(query, [studentId], (err, results) => {
@@ -428,7 +371,28 @@ app.get('/feedback', authorizeRole(['Student']), (req, res) => {
             return;
         }
 
-        res.render('feedback/submit-feedback', { courses: results, successMessage: null });
+        // Query to check if feedback already exists for any of the courses
+        connection.query(feedbackQuery, [studentId], (err, feedbackResults) => {
+            if (err) {
+                console.error('Error checking feedback status:', err);
+                res.status(500).send('Error checking feedback status.');
+                return;
+            }
+
+            // Create a set of courses that already have feedback
+            const feedbackedCourses = new Set();
+            feedbackResults.forEach(feedback => {
+                feedbackedCourses.add(`${feedback.course_cid}-${feedback.semester}`);
+            });
+
+            // Pass feedbacked courses to the frontend
+            res.render('feedback/submit-feedback', { 
+                courses: results, 
+                feedbackedCourses: Array.from(feedbackedCourses),
+                successMessage: null, 
+                userType 
+            });
+        });
     });
 });
 
@@ -437,7 +401,9 @@ app.post('/feedback', authorizeRole(['Student']), (req, res) => {
     const { cid, feedback_des } = req.body;
     const [courseCid, semester] = cid.split('-'); // Parse course ID and semester
     const studentId = req.session.user_id;
+    const userType = req.session.user_type;
 
+    // Step 1: Validate if the student is eligible to provide feedback for this course
     const validationQuery = `
         SELECT 1
         FROM History_courses
@@ -451,11 +417,13 @@ app.post('/feedback', authorizeRole(['Student']), (req, res) => {
             return;
         }
 
+        // If the student isn't eligible for feedback on this course
         if (results.length === 0) {
             res.status(400).send('You are not eligible to provide feedback for this course.');
             return;
         }
 
+        // Step 2: Insert or update the feedback
         const feedbackQuery = `
             INSERT INTO Feed_Back (user_id, course_cid, semester, feedback_des)
             VALUES (?, ?, ?, ?)
@@ -469,9 +437,50 @@ app.post('/feedback', authorizeRole(['Student']), (req, res) => {
                 return;
             }
 
-            res.render('feedback/submit-feedback', {
-                courses: results,
-                successMessage: 'Your feedback has been submitted successfully!',
+            // Step 3: Fetch all courses that the student can give feedback for
+            const coursesQuery = `
+                SELECT c.cid, c.name, c.semester, c.instructor
+                FROM History_courses h
+                JOIN Course c ON h.course_cid = c.cid AND h.semester = c.semester
+                WHERE h.user_id = ?
+                ORDER BY h.semester DESC
+            `;
+
+            connection.query(coursesQuery, [studentId], (err, courses) => {
+                if (err) {
+                    console.error('Error fetching past courses for feedback:', err);
+                    res.status(500).send('Error fetching past courses for feedback.');
+                    return;
+                }
+
+                // Step 4: Check which courses already have feedback
+                const feedbackQueryCheck = `
+                    SELECT course_cid, semester
+                    FROM Feed_Back
+                    WHERE user_id = ?
+                `;
+
+                connection.query(feedbackQueryCheck, [studentId], (err, feedbackResults) => {
+                    if (err) {
+                        console.error('Error checking feedback status:', err);
+                        res.status(500).send('Error checking feedback status.');
+                        return;
+                    }
+
+                    // Create a set of courses that already have feedback
+                    const feedbackedCourses = new Set();
+                    feedbackResults.forEach(feedback => {
+                        feedbackedCourses.add(`${feedback.course_cid}-${feedback.semester}`);
+                    });
+
+                    // Step 5: Render the view with the courses and feedbackedCourses
+                    res.render('feedback/submit-feedback', {
+                        courses: courses, // Pass the list of courses
+                        feedbackedCourses: Array.from(feedbackedCourses), // Pass feedbackedCourses as an array
+                        successMessage: 'Your feedback has been submitted successfully!',
+                        userType
+                    });
+                });
             });
         });
     });
@@ -524,14 +533,14 @@ app.get('/view-feedback', authorizeRole(['Admin', 'Faculty', 'Staff', 'Student']
     });
 });
 
-// GET :/create-user )
+// GET :/create-user
 app.get('/create-user', authorizeRole(['Admin']), (req, res) => {
     const userType = req.session.user_type;
     const { successMessage = null, errorMessage = null } = req.query; // Handle notifications
     res.render('user/create-user', { userType, successMessage, errorMessage }); 
 });
 
-// POST :/create-user , authorizeRole(['Admin'])
+// POST :/create-user
 app.post('/create-user', authorizeRole(['Admin']), (req, res) => {
     const {
         user_id,
@@ -1228,7 +1237,7 @@ app.post('/delete-user', authorizeRole(['Admin']), (req, res) => {
 
 // GET :/view-student-registrations
 app.get('/view-student-registrations', authorizeRole(['Admin', 'Faculty', 'Staff']), (req, res) => {
-    const { criteria = 'name', query = '' } = req.query; // Default to search by name if no criteria specified
+    const { criteria = 'course_name', query = '' } = req.query; // Default to search by name if no criteria specified
     const userType = req.session.user_type;
     // Validate criteria
     const validCriteria = ['name', 'email', 'course_name', 'cid', 'semester'];
@@ -1266,6 +1275,7 @@ app.get('/view-student-registrations', authorizeRole(['Admin', 'Faculty', 'Staff
         SELECT 
             u.user_id, u.fname, u.lname, u.email, 
             c.cid, c.name AS course_name, c.semester, 
+            COUNT(DISTINCT r.user_id) AS total_students, -- Count unique students
             t.week_day, t.class_period
         FROM Users u
         LEFT JOIN Registration r ON u.user_id = r.user_id
@@ -1273,6 +1283,7 @@ app.get('/view-student-registrations', authorizeRole(['Admin', 'Faculty', 'Staff
         LEFT JOIN Timetable t ON c.cid = t.course_cid AND c.semester = t.semester
         WHERE u.user_type = 'Student'
         ${whereClause ? `AND ${whereClause.substring(6)}` : ''}
+        GROUP BY c.cid, c.semester, t.week_day, t.class_period, u.user_id
         ORDER BY u.fname, u.lname, c.semester, c.cid, t.week_day, t.class_period
     `;
 
@@ -1296,14 +1307,30 @@ app.get('/view-student-registrations', authorizeRole(['Admin', 'Faculty', 'Staff
             }
 
             if (row.cid) {
-                students[row.user_id].registrations.push({
-                    course_id: row.cid,
-                    course_name: row.course_name,
-                    semester: row.semester,
-                    timetable: row.week_day && row.class_period 
-                        ? [{ week_day: row.week_day, class_period: row.class_period }]
-                        : []
-                });
+                const existingRegistration = students[row.user_id].registrations.find(
+                    reg => reg.course_id === row.cid
+                );
+
+                if (existingRegistration) {
+                    // Add timetable slot if it exists
+                    if (row.week_day && row.class_period) {
+                        existingRegistration.timetable.push({
+                            week_day: row.week_day,
+                            class_period: row.class_period
+                        });
+                    }
+                } else {
+                    // Add a new registration
+                    students[row.user_id].registrations.push({
+                        course_id: row.cid,
+                        course_name: row.course_name,
+                        semester: row.semester,
+                        total_students: row.total_students, // Correct total students count
+                        timetable: row.week_day && row.class_period
+                            ? [{ week_day: row.week_day, class_period: row.class_period }]
+                            : []
+                    });
+                }
             }
         });
 
@@ -1559,58 +1586,74 @@ app.get('/search-courses', (req, res) => {
     });
 });
 
-//GET :/past-courses
+// GET :/past-courses
 app.get('/past-courses', authorizeRole(['Student']), (req, res) => {
     const studentId = req.session.user_id;
     const userType = req.session.user_type;
-    const selectedSemester = req.query.semester || 'all';  // Default to 'all' if no semester is selected
 
-    // Query to get the distinct semesters for the dropdown
-    const semestersQuery = `
-        SELECT DISTINCT semester
-        FROM History_courses
-        ORDER BY semester DESC`;
+    // Get the current year and semester
+    const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1; // Months are 0-indexed
+    const currentSemester = Math.ceil(currentMonth / 4); // Divide the year into 3 semesters
+    const currentSemesterCode = `${currentYear % 100}${currentSemester}`; // Format: YY + Semester (e.g., 231)
 
-    // Query to get the courses for the selected semester
-    let query = `
-        SELECT c.cid, c.name, c.semester, c.credit, c.instructor
+    // Get the search criteria and query from the request
+    const { criteria, query } = req.query;
+
+    // Base SQL query for fetching past courses
+    let queryStr = `
+        SELECT c.cid, c.name, c.instructor, c.credit, c.semester
         FROM History_courses h
         JOIN Course c ON h.course_cid = c.cid AND h.semester = c.semester
         WHERE h.user_id = ?
+        AND (CONCAT(SUBSTRING(c.semester, 1, 2), '') < ? OR (SUBSTRING(c.semester, 1, 2) = ? AND SUBSTRING(c.semester, 3, 1) < ?))
     `;
-    if (selectedSemester !== 'all') {
-        query += ` AND c.semester = ?`;
-    }
-    query += ' ORDER BY c.semester DESC';
 
-    // Fetching distinct semesters for the filter
-    connection.query(semestersQuery, (err, semesterResults) => {
+    // Modify the query based on search criteria
+    if (criteria && query) {
+        switch (criteria) {
+            case 'cid':
+                queryStr += ` AND c.cid LIKE ?`;  // Search by Course ID
+                break;
+            case 'name':
+                queryStr += ` AND c.name LIKE ?`;  // Search by Course Name
+                break;
+            case 'semester':
+                queryStr += ` AND c.semester LIKE ?`;  // Search by Semester
+                break;
+            case 'instructor':
+                queryStr += ` AND c.instructor LIKE ?`;  // Search by Instructor
+                break;
+            default:
+                break;
+        }
+    }
+
+    queryStr += ` ORDER BY c.semester DESC`;  // Sort by semester in descending order
+
+    // Execute the query with parameters
+    connection.query(queryStr, [studentId, currentSemesterCode, currentYear % 100, currentSemester, `%${query}%`], (err, results) => {
         if (err) {
-            console.error('Error fetching semesters:', err);  // Log the detailed error
-            return res.status(500).send('Error fetching semesters.');
+            console.error('Error fetching past courses:', err);
+            res.status(500).send('Error fetching past courses.');
+            return;
         }
 
-        // Fetching courses for the selected semester
-        connection.query(query, [studentId, ...(selectedSemester !== 'all' ? [selectedSemester] : [])], (err, results) => {
-            if (err) {
-                console.error('Error fetching past courses for feedback:', err);  // Log the detailed error
-                return res.status(500).send('Error fetching past courses for feedback.');
-            }
+        // Calculate the total credits for the past courses
+        const totalCredits = results.reduce((sum, course) => sum + course.credit, 0);
 
-            // Render the page with fetched data
-            res.render('course/past-courses', {
-                courses: results,
-                userType,
-                semesters: semesterResults,
-                selectedSemester // Pass selectedSemester to highlight the selected value in the dropdown
-            });
+        // Render the past-courses page with the filtered results
+        res.render('course/past-courses', {
+            courses: results,
+            userType,
+            totalCredits,
+            criteria: criteria || 'all',  // Send back the selected criteria for the search form
+            query: query || ''           // Send back the query for the search form
         });
     });
 });
 
-
-
-//GET :/view-calendar
+// GET :/view-calendar
 app.get('/view-calendar', authorizeRole(['Student']), (req, res) => {
     const studentId = req.session.user_id;
     const userType = req.session.user_type;
@@ -1620,41 +1663,70 @@ app.get('/view-calendar', authorizeRole(['Student']), (req, res) => {
     const currentMonth = new Date().getMonth() + 1; // Months are 0-indexed
     const currentSemester = Math.ceil(currentMonth / 4); // Divide the year into 3 semesters
     const currentSemesterCode = `${currentYear % 100}${currentSemester}`; // Format: YY + Semester (e.g., 231)
-    let nextSemesterCode = '';
-    if(currentSemester==3){
-        nextSemesterCode = `${currentYear % 100 + 1}1`;
-    }
-    else{
-        nextSemesterCode = `${currentYear % 100}${currentSemester+1}`;
-    }
+    let nextSemesterCode = currentSemesterCode;
 
-    const query = `
-        SELECT c.name, t.week_day, t.class_period, c.credit
+    // Step 1: Query to get the unique courses and their credits
+    const courseQuery = `
+        SELECT DISTINCT c.cid, c.name, c.credit
         FROM Registration r
-        JOIN Timetable t ON r.course_cid = t.course_cid AND r.semester = t.semester
         JOIN Course c ON r.course_cid = c.cid AND r.semester = c.semester
         WHERE r.user_id = ? AND r.semester = ?
-        ORDER BY t.week_day, t.class_period
     `;
 
-    connection.query(query, [studentId, nextSemesterCode], (err, results) => {
+    connection.query(courseQuery, [studentId, currentSemesterCode], (err, courses) => {
         if (err) {
             console.error('Error fetching registered courses:', err);
             res.status(500).send('Error fetching registered courses.');
             return;
         }
 
-        // Calculate total credits
-        const totalCredit = results.reduce((sum, row) => sum + row.credit, 0);
+        // Step 2: Calculate total credits
+        const totalCredit = courses.reduce((sum, row) => sum + row.credit, 0);
 
-        // Group results by week_day and class_period for easier rendering
-        const timetable = {};
-        results.forEach(({ name, week_day, class_period }) => {
-            if (!timetable[class_period]) timetable[class_period] = {};
-            timetable[class_period][week_day] = name;
-        });
+        // Step 3: Query to get the timetable data for the student's courses
+const timetableQuery = `
+SELECT t.course_cid, t.week_day, t.class_period, c.name
+FROM Timetable t
+JOIN Course c ON t.course_cid = c.cid
+WHERE t.course_cid IN (SELECT r.course_cid FROM Registration r WHERE r.user_id = ? AND r.semester = ?)
+`;
 
-        res.render('course/view-calendar', { timetable, userType, nextSemesterCode, totalCredit });
+connection.query(timetableQuery, [studentId, currentSemesterCode], (err, timetableEntries) => {
+if (err) {
+    console.error('Error fetching timetable:', err);
+    res.status(500).send('Error fetching timetable.');
+    return;
+}
+
+// Step 4: Build the timetable object for rendering
+const timetable = {};
+
+// Initialize timetable object for periods 1 to 12, and days 2 to 8 (Monday to Sunday)
+for (let period = 1; period <= 12; period++) {
+    timetable[period] = {};  // Initialize empty object for each period
+    for (let day = 2; day <= 8; day++) {
+        timetable[period][day] = '';  // Empty by default (no course)
+    }
+}
+
+// Fill timetable with actual courses based on `timetableEntries`
+timetableEntries.forEach(entry => {
+    const { course_cid, week_day, class_period, name } = entry;
+
+    // Assign the combined course name and ID to the timetable slot
+    const courseInfo = `${name} - ${course_cid}`;
+    timetable[class_period][week_day] = courseInfo;
+});
+
+// Step 5: Render the timetable
+res.render('course/view-calendar', {
+    timetable, 
+    userType, 
+    nextSemesterCode, 
+    totalCredit,
+    courses // Ensure courses are also passed to the view
+});
+});
     });
 });
 

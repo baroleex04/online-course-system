@@ -22,10 +22,10 @@
             <div class="row g-3">
                 <div class="col-md-3">
                     <select name="criteria" class="form-select">
-                        <option value="name" <%= criteria === 'name' ? 'selected' : '' %>>Student Name</option>
-                        <option value="email" <%= criteria === 'email' ? 'selected' : '' %>>Student Email</option>
                         <option value="course_name" <%= criteria === 'course_name' ? 'selected' : '' %>>Course Name</option>
                         <option value="cid" <%= criteria === 'cid' ? 'selected' : '' %>>Course ID</option>
+                        <option value="name" <%= criteria === 'name' ? 'selected' : '' %>>Student Name</option>
+                        <option value="email" <%= criteria === 'email' ? 'selected' : '' %>>Student Email</option>
                         <option value="semester" <%= criteria === 'semester' ? 'selected' : '' %>>Semester</option>
                     </select>
                 </div>
@@ -43,33 +43,77 @@
                 </div>
             </div>
         </form>
+
         <% if (students.length > 0) { %>
             <% students.forEach(student => { %>
-                <% if (student.registrations.length > 0) { %>
-                    <% student.registrations.forEach((registration, index) => { %>
+                <% 
+                    let seenCourses = new Set(); // To track courses already shown
+                %>
+                <% student.registrations.forEach((registration, index) => { %>
+                    <% 
+                        // Check if this course has already been displayed
+                        if (!seenCourses.has(registration.course_id)) {
+                            seenCourses.add(registration.course_id); // Mark course as displayed
+                    %>
                         <div class="registration-card mb-3">
-                            <!-- Collapsible Header -->
+                            <!-- Collapsible Header for Timetable -->
                             <div class="card">
                                 <div class="card-header d-flex justify-content-between align-items-center">
                                     <div>
                                         <h3>Course: <%= registration.course_name %> (ID: <%= registration.course_id %>)</h3>
                                         <p class="mb-0">Total Students Registered: 
-                                            <span class="badge bg-info text-dark"><%= student.registrations.length %></span>
+                                            <span class="text-dark">
+                                                <%= registration.total_students %>
+                                            </span>
                                         </p>
                                     </div>
                                     <button 
-                                        class="btn btn-link" 
+                                        class="btn btn-outline-secondary" 
                                         type="button" 
                                         data-bs-toggle="collapse" 
-                                        data-bs-target="#collapse-<%= index %>" 
+                                        data-bs-target="#collapse-timetable-<%= registration.course_id %>" 
                                         aria-expanded="false" 
-                                        aria-controls="collapse-<%= index %>">
-                                        View Details
+                                        aria-controls="collapse-timetable-<%= registration.course_id %>">
+                                        Timetable
                                     </button>
                                 </div>
-    
-                                <!-- Collapsible Body -->
-                                <div id="collapse-<%= index %>" class="collapse">
+
+                                <!-- Collapsible Body for Timetable -->
+                                <div id="collapse-timetable-<%= registration.course_id %>" class="collapse">
+                                    <div class="card-body">
+                                        <% if (registration.timetable.length > 0) { %>
+                                            <ul class="list-unstyled">
+                                                <% registration.timetable.forEach(slot => { %>
+                                                    <li>
+                                                        <strong>Day:</strong> 
+                                                        <%= ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][slot.week_day - 2] %>,
+                                                        <strong>Period:</strong> <%= slot.class_period %>
+                                                    </li>
+                                                <% }) %>
+                                            </ul>
+                                        <% } else { %>
+                                            <em>No timetable available</em>
+                                        <% } %>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Collapsible Header for Students -->
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <button 
+                                        class="btn btn-outline-secondary" 
+                                        type="button" 
+                                        data-bs-toggle="collapse" 
+                                        data-bs-target="#collapse-students-<%= registration.course_id %>" 
+                                        aria-expanded="false" 
+                                        aria-controls="collapse-students-<%= registration.course_id %>">
+                                        Students
+                                    </button>
+                                </div>
+
+                                <!-- Collapsible Body for Students -->
+                                <div id="collapse-students-<%= registration.course_id %>" class="collapse">
                                     <div class="card-body">
                                         <div class="table-responsive">
                                             <table class="table table-striped table-bordered">
@@ -78,7 +122,6 @@
                                                         <th>Student Name</th>
                                                         <th>Student ID</th>
                                                         <th>Email</th>
-                                                        <th>Timetable</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -86,20 +129,6 @@
                                                         <td><%= student.name %></td>
                                                         <td><%= student.user_id %></td>
                                                         <td><%= student.email %></td>
-                                                        <td>
-                                                            <% if (registration.timetable.length > 0) { %>
-                                                                <ul class="list-unstyled mb-0">
-                                                                    <% registration.timetable.forEach(slot => { %>
-                                                                        <li>
-                                                                            Day: <%= ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][slot.week_day - 2] %>,
-                                                                            Period: <%= slot.class_period %>
-                                                                        </li>
-                                                                    <% }) %>
-                                                                </ul>
-                                                            <% } else { %>
-                                                                <em>No timetable available</em>
-                                                            <% } %>
-                                                        </td>
                                                     </tr>
                                                 </tbody>
                                             </table>
@@ -108,14 +137,13 @@
                                 </div>
                             </div>
                         </div>
-                    <% }) %>
-                <% } else { %>
-                    <p>No registrations found for <%= student.name %>.</p>
-                <% } %>
+                    <% } %>
+                <% }) %>
             <% }) %>
         <% } else { %>
             <p class="text-center">No students or registrations found.</p>
         <% } %>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
-    
+</body>
+</html>
