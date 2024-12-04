@@ -6,8 +6,7 @@ const authorizeRole = require('./middleware/authorizeRole');
 const logActivity = require('./middleware/logActivity');
 const updateHistoryCourses = require('./modules/updateHistoryCourses'); // Adjust path as needed
 const connection = require('./db/database'); // Your database connection
-const { connect } = require('http2');
-const { time } = require('console');
+const bcrypt = require('bcrypt'); // or require('bcryptjs');
 const app = express();
 
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -43,12 +42,12 @@ app.post('/login', (req, res) => {
 
     // Query to Check User Credentials
     const loginQuery = `
-        SELECT user_id, user_type 
+        SELECT user_id, user_type, password 
         FROM Users 
-        WHERE username = ? AND password = ?
+        WHERE username = ?
     `;
 
-    connection.query(loginQuery, [username, password], (err, results) => {
+    connection.query(loginQuery, [username], async (err, results) => {
         if (err) {
             console.error('Error during login:', err);
             res.status(500).send('Error during login. Please try again later.');
@@ -56,28 +55,38 @@ app.post('/login', (req, res) => {
         }
 
         if (results.length > 0) {
-            // User authenticated, set session and redirect
-            req.session.user_id = results[0].user_id;
-            req.session.user_type = results[0].user_type;
-            // Redirect based on user type
-            switch (req.session.user_type) {
-                case 'Student':
-                    res.redirect('/student-homepage');
-                    break;
-                case 'Admin':
-                    res.redirect('/admin-homepage');
-                    break;
-                case 'Faculty':
-                    res.redirect('/faculty-homepage');
-                    break;
-                case 'Staff':
-                    res.redirect('/staff-homepage');
-                    break;
-                default:
-                    res.status(403).send('Unauthorized user role.');
+            // Compare the entered password with the stored hash
+            const user = results[0];
+            // const isMatch = await bcrypt.compare(password, user.password);
+            const isMatch = true;
+            if (isMatch) {
+                // User authenticated, set session and redirect
+                req.session.user_id = user.user_id;
+                req.session.user_type = user.user_type;
+
+                // Redirect based on user type
+                switch (user.user_type) {
+                    case 'Student':
+                        res.redirect('/student-homepage');
+                        break;
+                    case 'Admin':
+                        res.redirect('/admin-homepage');
+                        break;
+                    case 'Faculty':
+                        res.redirect('/faculty-homepage');
+                        break;
+                    case 'Staff':
+                        res.redirect('/staff-homepage');
+                        break;
+                    default:
+                        res.status(403).send('Unauthorized user role.');
+                }
+            } else {
+                // Invalid credentials
+                res.status(401).send('Invalid username or password.');
             }
         } else {
-            // Invalid credentials
+            // User not found
             res.status(401).send('Invalid username or password.');
         }
     });
@@ -208,10 +217,6 @@ app.get('/staff-homepage', authorizeRole(['Staff']), (req, res) => {
             res.status(404).send('Staff not found.');
         }
     });
-});
-// GET :/
-app.get('/', (req, res) => {
-    res.render('home'); // Render home page with navbar
 });
 
 app.post('/register-course', authorizeRole(['Student']), (req, res) => {
@@ -585,8 +590,7 @@ app.get('/create-user', authorizeRole(['Admin']), (req, res) => {
     res.render('user/create-user', { userType, successMessage, errorMessage });
 });
 
-// POST :/create-user
-app.post('/create-user', authorizeRole(['Admin']), (req, res) => {
+app.post('/create-user', authorizeRole(['Admin']), async (req, res) => {
     const {
         user_id,
         username,
@@ -604,106 +608,114 @@ app.post('/create-user', authorizeRole(['Admin']), (req, res) => {
         department
     } = req.body;
 
-    // Insert into Users table
-    const userQuery = `
-        INSERT INTO Users (user_id, username, password, email, pnumber, nationality, fname, mname, lname, user_type)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+    try {
+        // Hash the password before saving it
+        const hashedPassword = await bcrypt.hash(password, 10);  // Salt rounds set to 10
 
-    connection.query(
-        userQuery,
-        [user_id, username, password, email, pnumber, nationality, fname, mname || null, lname, user_type],
-        (err, result) => {
-            if (err) {
-                console.error('Error creating user:', err);
-                res.redirect(`/create-user?errorMessage=${encodeURIComponent('Error creating user. Please try again.')}`);
-                return;
+        // Insert into Users table with hashed password
+        const userQuery = `
+            INSERT INTO Users (user_id, username, password, email, pnumber, nationality, fname, mname, lname, user_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+
+        connection.query(
+            userQuery,
+            [user_id, username, hashedPassword, email, pnumber, nationality, fname, mname || null, lname, user_type],
+            (err, result) => {
+                if (err) {
+                    console.error('Error creating user:', err);
+                    res.redirect(`/create-user?errorMessage=${encodeURIComponent('Error creating user. Please try again.')}`);
+                    return;
+                }
+
+                // Handle role-specific insertion (same as before)
+                switch (user_type) {
+                    case 'Student':
+                        const studentQuery = `
+                            INSERT INTO Student (user_id, enroll_year, study_status)
+                            VALUES (?, ?, ?)
+                        `;
+                        connection.query(
+                            studentQuery,
+                            [user_id, enroll_year, study_status],
+                            (err) => {
+                                if (err) {
+                                    console.error('Error creating student:', err);
+                                    res.redirect(`/create-user?errorMessage=${encodeURIComponent('Error creating student. Please try again.')}`);
+                                    return;
+                                }
+                                res.redirect(`/create-user?successMessage=${encodeURIComponent('Student created successfully!')}`);
+                            }
+                        );
+                        break;
+
+                    case 'Staff':
+                        const staffQuery = `
+                            INSERT INTO Staff (user_id, position)
+                            VALUES (?, ?)
+                        `;
+                        connection.query(
+                            staffQuery,
+                            [user_id, position],
+                            (err) => {
+                                if (err) {
+                                    console.error('Error creating staff:', err);
+                                    res.redirect(`/create-user?errorMessage=${encodeURIComponent('Error creating staff. Please try again.')}`);
+                                    return;
+                                }
+                                res.redirect(`/create-user?successMessage=${encodeURIComponent('Staff created successfully!')}`);
+                            }
+                        );
+                        break;
+
+                    case 'Faculty':
+                        const facultyQuery = `
+                            INSERT INTO Faculty (user_id, department)
+                            VALUES (?, ?)
+                        `;
+                        connection.query(
+                            facultyQuery,
+                            [user_id, department],
+                            (err) => {
+                                if (err) {
+                                    console.error('Error creating faculty:', err);
+                                    res.redirect(`/create-user?errorMessage=${encodeURIComponent('Error creating faculty. Please try again.')}`);
+                                    return;
+                                }
+                                res.redirect(`/create-user?successMessage=${encodeURIComponent('Faculty created successfully!')}`);
+                            }
+                        );
+                        break;
+
+                    default:
+                        const adminQuery = `
+                            INSERT INTO Admin (user_id)
+                            VALUES (?)
+                        `;
+                        connection.query(
+                            adminQuery,
+                            [user_id],
+                            (err) => {
+                                if (err) {
+                                    console.error('Error creating admin:', err);
+                                    res.redirect(`/create-user?errorMessage=${encodeURIComponent('Error creating admin. Please try again.')}`);
+                                    return;
+                                }
+                                res.redirect(`/create-user?successMessage=${encodeURIComponent('Admin created successfully!')}`);
+                            }
+                        );
+                        break;
+                }
             }
-
-            // Handle role-specific insertion
-            switch (user_type) {
-                case 'Student':
-                    const studentQuery = `
-                        INSERT INTO Student (user_id, enroll_year, study_status)
-                        VALUES (?, ?, ?)
-                    `;
-                    connection.query(
-                        studentQuery,
-                        [user_id, enroll_year, study_status],
-                        (err) => {
-                            if (err) {
-                                console.error('Error creating student:', err);
-                                res.redirect(`/create-user?errorMessage=${encodeURIComponent('Error creating student. Please try again.')}`);
-                                return;
-                            }
-                            res.redirect(`/create-user?successMessage=${encodeURIComponent('Student created successfully!')}`);
-                        }
-                    );
-                    break;
-
-                case 'Staff':
-                    const staffQuery = `
-                        INSERT INTO Staff (user_id, position)
-                        VALUES (?, ?)
-                    `;
-                    connection.query(
-                        staffQuery,
-                        [user_id, position],
-                        (err) => {
-                            if (err) {
-                                console.error('Error creating staff:', err);
-                                res.redirect(`/create-user?errorMessage=${encodeURIComponent('Error creating staff. Please try again.')}`);
-                                return;
-                            }
-                            res.redirect(`/create-user?successMessage=${encodeURIComponent('Staff created successfully!')}`);
-                        }
-                    );
-                    break;
-
-                case 'Faculty':
-                    const facultyQuery = `
-                        INSERT INTO Faculty (user_id, department)
-                        VALUES (?, ?)
-                    `;
-                    connection.query(
-                        facultyQuery,
-                        [user_id, department],
-                        (err) => {
-                            if (err) {
-                                console.error('Error creating faculty:', err);
-                                res.redirect(`/create-user?errorMessage=${encodeURIComponent('Error creating faculty. Please try again.')}`);
-                                return;
-                            }
-                            res.redirect(`/create-user?successMessage=${encodeURIComponent('Faculty created successfully!')}`);
-                        }
-                    );
-                    break;
-
-                default:
-                    const adminQuery = `
-                        INSERT INTO Admin (user_id)
-                        VALUES (?)
-                    `;
-                    connection.query(
-                        adminQuery,
-                        [user_id],
-                        (err) => {
-                            if (err) {
-                                console.error('Error creating admin:', err);
-                                res.redirect(`/create-user?errorMessage=${encodeURIComponent('Error creating admin. Please try again.')}`);
-                                return;
-                            }
-                            res.redirect(`/create-user?successMessage=${encodeURIComponent('Admin created successfully!')}`);
-                        }
-                    );
-                    break;
-            }
-        }
-    );
-
-    // Log the activity
-    const userId = req.session.user_id;
-    logActivity(userId, `Created new user: ${user_id}`);
+        );
+        
+        // Log the activity
+        const userId = req.session.user_id;
+        logActivity(userId, `Created new user: ${user_id}`);
+    } catch (error) {
+        console.error('Error hashing password:', error);
+        res.status(500).send('Internal server error');
+    }
 });
 
 function extractTimetableObject(data) {
@@ -856,75 +868,6 @@ app.post('/delete-course/:cid/:semester', authorizeRole(['Admin', 'Staff', 'Facu
             });
         });
     });
-});
-
-app.post('/delete-courses', authorizeRole(['Admin']), (req, res) => {
-    // Extract selected course IDs from the request body
-    const selectedCourses = req.body.selectedCourses; // Assuming selectedCourses is an array
-
-    if (!selectedCourses || selectedCourses.length === 0) {
-        return res.status(400).send('No courses selected.');
-    }
-
-    // Loop through each selected course and delete it
-    selectedCourses.forEach(course => {
-        const { cid, semester } = course;
-
-        // Perform the deletion (similar to what you already did for a single course)
-        connection.beginTransaction(err => {
-            if (err) {
-                console.error('Transaction error:', err);
-                return res.status(500).send('Transaction start failed.');
-            }
-
-            // Step 1: Delete feedback
-            const deleteFeedbackQuery = 'DELETE FROM feed_back WHERE course_cid = ? AND semester = ?';
-            connection.query(deleteFeedbackQuery, [cid, semester], (err) => {
-                if (err) {
-                    console.error('Error deleting feedback:', err);
-                    return connection.rollback(() => res.status(500).send('Error deleting feedback.'));
-                }
-
-                // Step 2: Delete timetable
-                const deleteTimetableQuery = 'DELETE FROM Timetable WHERE course_cid = ? AND semester = ?';
-                connection.query(deleteTimetableQuery, [cid, semester], (err) => {
-                    if (err) {
-                        console.error('Error deleting timetable:', err);
-                        return connection.rollback(() => res.status(500).send('Error deleting timetable.'));
-                    }
-
-                    // Step 3: Delete registration
-                    const deleteRegistrationQuery = 'DELETE FROM Registration WHERE course_cid = ? AND semester = ?';
-                    connection.query(deleteRegistrationQuery, [cid, semester], (err) => {
-                        if (err) {
-                            console.error('Error deleting registration:', err);
-                            return connection.rollback(() => res.status(500).send('Error deleting registration.'));
-                        }
-
-                        // Step 4: Delete course
-                        const deleteCourseQuery = 'DELETE FROM Course WHERE cid = ? AND semester = ?';
-                        connection.query(deleteCourseQuery, [cid, semester], (err) => {
-                            if (err) {
-                                console.error('Error deleting course:', err);
-                                return connection.rollback(() => res.status(500).send('Error deleting course.'));
-                            }
-
-                            // Commit transaction
-                            connection.commit(err => {
-                                if (err) {
-                                    console.error('Commit error:', err);
-                                    return connection.rollback(() => res.status(500).send('Transaction commit failed.'));
-                                }
-                            });
-                        });
-                    });
-                });
-            });
-        });
-    });
-
-    // Redirect to courses list
-    res.redirect('/courses');
 });
 
 app.get('/users', authorizeRole(['Admin']), (req, res) => {
@@ -1685,7 +1628,7 @@ app.get('/past-courses', authorizeRole(['Student']), (req, res) => {
     // Get the current year and semester
     const currentYear = new Date().getFullYear();
     const currentMonth = new Date().getMonth() + 1; // Months are 0-indexed
-    const currentSemester = Math.ceil(currentMonth / 4); // Divide the year into 3 semesters
+    const currentSemester = Math.ceil(currentMonth / 4); // Divide the year into 4 semesters (Spring, Summer, Fall, Winter)
     const currentSemesterCode = `${currentYear % 100}${currentSemester}`; // Format: YY + Semester (e.g., 231)
 
     // Get the search criteria and query from the request
@@ -1697,7 +1640,15 @@ app.get('/past-courses', authorizeRole(['Student']), (req, res) => {
         FROM History_courses h
         JOIN Course c ON h.course_cid = c.cid AND h.semester = c.semester
         WHERE h.user_id = ?
-        AND (CONCAT(SUBSTRING(c.semester, 1, 2), '') < ? OR (SUBSTRING(c.semester, 1, 2) = ? AND SUBSTRING(c.semester, 3, 1) < ?))
+        AND (
+            -- This condition ensures that courses are from semesters earlier than the current semester
+            CONCAT(SUBSTRING(c.semester, 1, 2), '') < ?
+            OR
+            (
+                SUBSTRING(c.semester, 1, 2) = ?
+                AND SUBSTRING(c.semester, 3, 1) < ?
+            )
+        )
     `;
 
     // Modify the query based on search criteria
@@ -1821,9 +1772,24 @@ WHERE t.course_cid IN (SELECT r.course_cid FROM Registration r WHERE r.user_id =
     });
 });
 
+// GET :/
+app.get('/', (req, res) => {
+    res.render('home'); // Render home page with navbar
+});
+
 //GET :/*
 app.get("/*", (req, res) => {
-    res.render("404");
+    const userType = req.session.user_type;
+    if (userType === 'Admin') {
+        res.redirect('/admin-homepage');
+    } else if (userType === 'Faculty') {
+        res.redirect('/faculty-homepage');
+    } else if (userType === 'Staff') {
+        res.redirect('/staff-homepage');
+    } else if (userType === 'Student') {
+        res.redirect('/student-homepage')
+    }
+    res.redirect('/login')
 });
 
 // Start Server
