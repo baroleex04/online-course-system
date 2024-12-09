@@ -57,8 +57,8 @@ app.post('/login', (req, res) => {
         if (results.length > 0) {
             // Compare the entered password with the stored hash
             const user = results[0];
-            // const isMatch = await bcrypt.compare(password, user.password);
-            const isMatch = true;
+            const isMatch = await bcrypt.compare(password, user.password);
+            // const isMatch = true;
             if (isMatch) {
                 // User authenticated, set session and redirect
                 req.session.user_id = user.user_id;
